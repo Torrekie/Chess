@@ -46,6 +46,11 @@
 #import "MBCBoard.h"
 #import "MBCBoardCommon.h"
 #import "MBCBoardViewInterface.h"
+#import "MBCOpenGL.h"
+#if TARGET_OS_IOS
+#import "MBCIOSOpenGLView.h"
+#import "MBCIOSBoardPresentation.h"
+#endif
 #import <sys/time.h>
 
 extern MBCPieceCode gInHandOrder[];
@@ -54,7 +59,11 @@ extern MBCPieceCode gInHandOrder[];
 @class MBCDrawStyle;
 @class MBCBoardWin;
 
+#if TARGET_OS_IOS
+@interface MBCBoardView : MBCIOSOpenGLView <MBCIOSBoardPresentation>
+#else
 @interface MBCBoardView : NSOpenGLView <MBCBoardViewInterface>
+#endif
 {
     MBCBoardWin *         fController;
     MBCInteractivePlayer *fInteractive;
@@ -66,8 +75,13 @@ extern MBCPieceCode gInHandOrder[];
     MBCPosition           fSelectedPos;
     MBCPosition           fLastSelectedPos;
     float                 fRawAzimuth;
+#if TARGET_OS_IOS
+    CGPoint               fOrigMouse;
+    CGPoint               fCurMouse;
+#else
     NSPoint               fOrigMouse;
     NSPoint               fCurMouse;
+#endif
     struct timeval		    fLastRedraw;
 @public
 	float					fAzimuth;
@@ -102,13 +116,36 @@ extern MBCPieceCode gInHandOrder[];
 	NSString *				fPieceStyle;
 	MBCMove	*				fHintMove;
 	MBCMove	*				fLastMove;
+#if TARGET_OS_OSX
 	NSCursor *				fHandCursor;
 	NSCursor *				fArrowCursor;
+#endif
 	MBCPiece				fLastPieceDrawn;
 	char					fKeyBuffer;
 	float					fAnisotropy;
 	GLint					fNumSamples;
+#if TARGET_OS_OSX
     NSTrackingArea *       fTrackingArea;
+#else
+    BOOL                  fDrawEdgeNotationLabels;
+    BOOL                  fOrientationTransitioning;
+    BOOL                  fBoardManipulationDidMove;
+    CGPoint               fBoardManipulationStartPoint;
+    CGPoint               fPreviousGestureCenter;
+    CGFloat               fPreviousGestureSpan;
+    BOOL                  fInTwoFingerManipulation;
+    BOOL                  fAwaitingPromotionChoice;
+    uint64_t              fLegalDropTargetsMask;
+    MBCSquare             fLegalDropOrigin;
+    int                   fLegalDropMoveCount;
+    BOOL                  fLegalDropTargetsValid;
+    NSMutableDictionary * fIOSAccessibilitySquareElements;
+    NSMutableArray *      fIOSVisibleAccessibilityElements;
+    float                 fCameraZoomScale;
+    float                 fCameraPanX;
+    float                 fCameraPanZ;
+    BOOL                  fStylesLoaded;
+#endif
 }
 
 //
@@ -131,9 +168,15 @@ extern MBCPieceCode gInHandOrder[];
 //
 // Basic view routines
 //
-- (id) initWithFrame:(NSRect)rect;
+- (id) initWithFrame:(MBCViewRect)rect;
 - (void) awakeFromNib;
-- (void) drawRect:(NSRect)rect;
+- (void) drawRect:(MBCViewRect)rect;
+#if TARGET_OS_IOS
+- (void)setNeedsDisplay:(BOOL)flag;
+- (BOOL)wantsMouse;
+- (void)iosTranslateCameraByScreenDelta:(CGPoint)delta;
+- (void)iosMultiplyCameraDistance:(float)factor;
+#endif
 
 - (void) startGame:(MBCVariant)variant playing:(MBCSide) side;
 - (void) drawNow;			// Redraw immediately

@@ -99,6 +99,7 @@ const int kEdgeNotationAlphaStartIndex  = 8;
     if (self) {
         self.clearColor = MTLClearColorMake(kClearColorRed, kClearColorGreen, kClearColorBlue, 1.0);
 #if TARGET_OS_IOS
+        _iosRenderingActive = YES;
         self.userInteractionEnabled = YES;
         self.multipleTouchEnabled = YES;
 #endif
@@ -249,6 +250,10 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 }
 
 - (void)drawMetalContent {
+#if TARGET_OS_IOS
+    if (!_iosRenderingActive || _orientationTransitioning ||
+        UIApplication.sharedApplication.applicationState == UIApplicationStateBackground) return;
+#endif
     @autoreleasepool {
         if ([self shouldUpdateAndRenderScene]) {
             [self prepareSceneDataForRenderer];
@@ -287,6 +292,82 @@ const int kEdgeNotationAlphaStartIndex  = 8;
     [_renderer cameraDidRotateAboutYAxis];
     _performLabelFlip = YES;
     [self drawNow];
+}
+
+- (CGPoint)iosProjectPosition:(MBCPosition)position {
+    CGPoint pixels = [_renderer.camera projectPositionFromModelToScreen:position];
+    CGSize drawable = self.drawableSize;
+    return CGPointMake(drawable.width > 0 ? pixels.x * self.bounds.size.width / drawable.width : 0,
+                       drawable.height > 0 ? pixels.y * self.bounds.size.height / drawable.height : 0);
+}
+
+- (MBCPosition)iosUnprojectPoint:(CGPoint)point {
+    CGSize bounds = self.bounds.size;
+    CGSize drawable = self.drawableSize;
+    vector_float2 pixels = simd_make_float2(
+        bounds.width > 0 ? point.x * drawable.width / bounds.width : 0,
+        bounds.height > 0 ? (bounds.height - point.y) * drawable.height / bounds.height : 0);
+    return [_renderer.camera unProjectPositionFromScreenToModel:pixels knownY:0.f];
+}
+
+- (NSDictionary *)iosCapturePresentationState {
+    vector_float2 pan = _renderer.camera.boardPlaneOffset;
+    NSMutableDictionary *state = [@{
+        @"azimuth": @(self.azimuth), @"elevation": @(self.elevation),
+        @"zoomScale": @(_renderer.camera.distance / 185.f),
+        @"panX": @(pan.x), @"panZ": @(pan.y),
+        @"pickedSquare": @(_pickedSquare),
+        @"edgeLabels": @(self.drawEdgeNotationLabels)
+    } mutableCopy];
+    if (_hintMove) state[@"hintMove"] = _hintMove;
+    if (_lastMove) state[@"lastMove"] = _lastMove;
+    return state;
+}
+
+- (void)iosRestorePresentationState:(NSDictionary *)state {
+    if (!state) return;
+    [_renderer.camera resetUserTransform];
+    self.azimuth = [state[@"azimuth"] floatValue];
+    self.elevation = [state[@"elevation"] floatValue];
+    _renderer.camera.distance = 185.f * (state[@"zoomScale"] ? [state[@"zoomScale"] floatValue] : 1.f);
+    [_renderer.camera translateOnBoardPlaneBy:simd_make_float2([state[@"panX"] floatValue], [state[@"panZ"] floatValue])];
+    self.drawEdgeNotationLabels = state[@"edgeLabels"] ? [state[@"edgeLabels"] boolValue] : YES;
+    [self hideMoves];
+    if (state[@"hintMove"]) [self showMoveAsHint:state[@"hintMove"]];
+    if (state[@"lastMove"]) [self showMoveAsLast:state[@"lastMove"]];
+    MBCSquare picked = state[@"pickedSquare"] ? [state[@"pickedSquare"] intValue] : kInvalidSquare;
+    if (picked < kBoardSquares ||
+        (picked > kInHandSquare && picked <= kInHandSquare + Black(PAWN))) {
+        MBCPiece piece = picked > kInHandSquare ? picked - kInHandSquare : [_board curContents:picked];
+        if (piece) { [self selectPiece:piece at:picked]; [self clickPiece]; }
+    }
+    [self needsUpdate];
+}
+
+- (BOOL)iosHasActiveInteraction {
+    return _inAnimation || _orientationTransitioning || _inBoardManipulation ||
+        _inTwoFingerManipulation || _awaitingPromotionChoice || _selectedPiece != EMPTY;
+}
+
+- (BOOL)iosPrepareRendererWithError:(NSError **)error {
+    if (error) *error = nil;
+    if (!_renderer || self.drawableSize.width <= 0 || self.drawableSize.height <= 0) {
+        if (error) *error = [NSError errorWithDomain:@"ChessRenderer" code:3 userInfo:
+            @{NSLocalizedDescriptionKey: NSLocalizedString(@"The board renderer has no drawing surface.", nil)}];
+        return NO;
+    }
+    [_renderer drawableSizeWillChange:self.drawableSize];
+    return YES;
+}
+
+- (void)iosSetRenderingActive:(BOOL)active {
+    _iosRenderingActive = active;
+    if (active) [self drawNow];
+}
+
+- (void)iosRetireRendererWithCompletion:(void (^)(void))completion {
+    _iosRenderingActive = NO;
+    [_renderer completePendingFramesWithCompletion:completion];
 }
 #endif
 
@@ -610,6 +691,11 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 
 - (void)animationDone {
     _inAnimation = NO;
+#if TARGET_OS_IOS
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:MBCIOSBoardInteractionEndedNotification object:self];
+    });
+#endif
 }
 
 - (IBAction)increaseFSAA:(id)sender {

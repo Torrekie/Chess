@@ -2,14 +2,25 @@ Chess 3.18
 
 This repository adds iPhone and iPad support to Apple's open-source
 Chess.app, based on Chess-570.1. The iOS app requires iOS 13.0 or later
-and a Metal-capable device. Its bundle identifier is com.apple.Chess,
+and a supported graphics device. Its bundle identifier is com.apple.Chess,
 and its executable and application bundle are Chess and Chess.app.
 
 The iOS application provides a native UIKit interface around the shared
-Metal renderer and chess model, with touch, pointer, keyboard and
+Metal and original OpenGL renderers and chess model, with touch, pointer, keyboard and
 VoiceOver support. It includes standard chess, Crazyhouse, Suicide and
 Losers variants, an in-process Sjeng engine, hints, undo, move history,
 board and piece styles, and configurable speech.
+
+Preferences > Style selects Metal or OpenGL for all game windows. Metal
+is the default. OpenGL uses Apple's retained renderer through gl4es and
+the system OpenGLES framework. Legacy Grass boards and Fur pieces are
+available with OpenGL; Metal displays Wood for these styles while
+preserving the saved selection.
+
+The Chess scheme includes renderer tests. Simulator coverage exercises
+drawables, textures, independent contexts, preferences and switch state.
+The full scene switch test runs on physical hardware because some simulator
+OpenGL compilers fail on generated fixed-function shaders.
 
 Named games, autosave, recent games, multiple iPad windows, and .game/PGN
 import and export use the application sandbox and system document picker.
@@ -18,28 +29,35 @@ ReplayKit provides screen recording. Localized resources are included.
 The original macOS project remains available in MBChess.xcodeproj.
 
 Build the iOS application in ChessIOS.xcodeproj using the Chess scheme,
-or run the following command with Xcode and ldid installed:
+or run the following command with Xcode, CMake and ldid installed:
 
     ./Scripts/build-ipa.sh
 
 This creates build/Chess.ipa with local ad-hoc signing for sideloading.
 The build does not request an Apple provisioning profile. Installation
 requires a sideloading method that supports this signing arrangement.
+The script signs with Resources/ChessIOS-AdHoc.entitlements, which includes
+a narrow private IOKit allowance for IOSurface and AGX GPU access when
+installed as a system application. The installer must preserve these
+entitlements. Ordinary iOS app signing uses Resources/ChessIOS.entitlements;
+the macOS App Sandbox exceptions do not apply to iOS.
 An output directory can be supplied as the script's first argument;
 DEVELOPER_DIR can select an installed Xcode, and CHESS_DERIVED_DATA can
 reuse an existing build cache.
 
 Licensing
 
-This project consists of two components: the Chess engine, "sjeng", and
-the graphical frontend. The original license terms follow.
+The original project consists of the Chess engine, "sjeng", and the
+graphical frontend. The iOS OpenGL backend also uses gl4es under the MIT
+license and the Mesa GLU utilities under the SGI Free Software License B
+version 2.0. See ThirdParty/README and the retained dependency notices.
+The original project license terms follow.
 
 "sjeng", contained in the "sjeng" subdirectory, is distributed under the
 terms of the GNU General Public License. See sjeng/COPYING for
 details.
 
-The graphical frontend, i.e., all files not in the "sjeng"
-subdirectory (including files derived from glChess which Apple has
+The original graphical frontend (including files derived from glChess which Apple has
 permission to relicense under the following terms), are distributed
 under the terms of the Apple Sample Code License:
 

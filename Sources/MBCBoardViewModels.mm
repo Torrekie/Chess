@@ -49,8 +49,10 @@
 #import "MBCBoardViewModels.h"
 
 #import <math.h>
-#import <OpenGL/gl.h>
-#import <OpenGL/glu.h>
+#import "MBCOpenGL.h"
+#if TARGET_OS_IOS
+#include "../ThirdParty/GLU/include/GL/glu.h"
+#endif
 
 #undef POLY_STATISTICS
 

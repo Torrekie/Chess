@@ -52,21 +52,35 @@
 #import "MBCDrawStyle.h"
 
 #import <math.h>
-#import <OpenGL/glu.h>
+#import "MBCOpenGL.h"
+#if TARGET_OS_IOS
+#include "../ThirdParty/GLU/include/GL/glu.h"
+#endif
 #import <algorithm>
 #import <sys/time.h>
 #import <vector>
 
 using std::min;
 
+#if TARGET_OS_IOS
+#define NSMinX CGRectGetMinX
+#define NSMaxX CGRectGetMaxX
+#define NSMinY CGRectGetMinY
+#define NSMaxY CGRectGetMaxY
+#endif
+
 @implementation MBCBoardView ( Draw )
 
 - (void) setupPerspective
 {
+#if TARGET_OS_IOS
+    CGRect bounds = CGRectMake(0, 0, self.drawableSize.width, self.drawableSize.height);
+#else
     NSRect bounds             = [self convertRectToBacking:[self bounds]];
     GLint opaque = NO;
     [[self openGLContext] setValues:&opaque 
 							  forParameter:NSOpenGLCPSurfaceOpacity];
+#endif
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	/* Stuff you can't do without */
@@ -89,11 +103,19 @@ using std::min;
     const float w               = bounds.size.width;
     const float h               = bounds.size.height*1.1f*(fVariant==kVarCrazyhouse ? 1.15f : 1.0f);
     const float kAspect         = std::max(1.0f, h / w);
+#if TARGET_OS_IOS
+    const float kDistance       = 300.0f * fCameraZoomScale;
+#else
     const float kDistance       = 300.0f;
+#endif
     const float kBoardSize      = kAspect*50.0f;
     const float kDeg2Rad        = M_PI / 180.0f;
     const float kRad2Deg        = 180.0f / M_PI;
+#if TARGET_OS_IOS
+    const float kAngleOfView    = 2.0f * atan2(kBoardSize, 300.0f) * kRad2Deg;
+#else
     const float kAngleOfView    = 2.0f * atan2(kBoardSize, kDistance) * kRad2Deg;
+#endif
 
 	glViewport(0, 0, (GLsizei)(bounds.size.width), (GLsizei)(bounds.size.height));
 
@@ -116,8 +138,13 @@ using std::min;
 	float	cameraX = cameraXZ  * sin(fAzimuth * kDeg2Rad);
 	float	cameraZ = cameraXZ  *-cos(fAzimuth * kDeg2Rad);
 
+#if TARGET_OS_IOS
+    gluLookAt(cameraX + fCameraPanX, cameraY, cameraZ + fCameraPanZ,
+              fCameraPanX, 0.0, fCameraPanZ, 0.0, 1.0, 0.0);
+#else
 	gluLookAt(cameraX, cameraY, cameraZ,
 			  0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+#endif
 
 	fNeedPerspective	= false;
 }
@@ -788,7 +815,7 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
-	NSRect b = [self bounds];
+	MBCViewRect b = [self bounds];
 	gluOrtho2D(NSMinX(b), NSMaxX(b), NSMinY(b), NSMaxY(b));
 	glMatrixMode(GL_MODELVIEW);
     glRotatef(-90.0, 1.0, 0.0, 0.0);
@@ -965,7 +992,7 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
-	NSRect b = [self bounds];
+	MBCViewRect b = [self bounds];
 	gluOrtho2D(NSMinX(b), NSMaxX(b), NSMinY(b), NSMaxY(b));
 	glMatrixMode(GL_MODELVIEW);
 
@@ -1019,6 +1046,7 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	glMatrixMode(GL_MODELVIEW);
 }
 
+#if TARGET_OS_OSX
 - (void) update
 {
 	[super update];
@@ -1030,10 +1058,12 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 		fNeedPerspective = true;
 	}
 }
+#endif
 
 /* Draw the scene for a game */
 - (void) drawPosition
 {
+#if TARGET_OS_OSX
 	if (![[self openGLContext] view]) {
 		//
 		//     Fall back to a less memory hungry format.
@@ -1046,6 +1076,7 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 		[[NSColor clearColor] set];
 		NSRectFill([self bounds]);
 	}
+#endif
 
 	if (fNeedStaticModels) {
 		fNeedStaticModels = false;
@@ -1131,7 +1162,12 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	}
 
 	/* Draw the co-ordinates [1-8] [a-h] */
+#if TARGET_OS_IOS
+    if (fDrawEdgeNotationLabels) [self drawCoords];
+    [self drawIOSLegalDropTargets];
+#else
 	[self drawCoords];
+#endif
 
 	/* Draw hint and last move */
 	[self drawMove:fHintMove asHint:YES];
@@ -1160,8 +1196,10 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	}
 #endif
 
+#if TARGET_OS_OSX
 	if (fInBoardManipulation)
 		[self drawManipulator];
+#endif
 
     [self makeBoardSolid];
 
@@ -1172,10 +1210,21 @@ MBCPieceCode gInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 	glFlush();
 #endif
 
+#if TARGET_OS_IOS
+    [self presentDrawable];
+#else
 	[[self openGLContext] flushBuffer];
+#endif
 }
 
 @end
+
+#if TARGET_OS_IOS
+#undef NSMinX
+#undef NSMaxX
+#undef NSMinY
+#undef NSMaxY
+#endif
 
 // Local Variables:
 // mode:ObjC

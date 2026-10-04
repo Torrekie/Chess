@@ -174,9 +174,9 @@ static void MBCRemoveStagedExport(NSURL *url)
             UTType *type = [UTType typeWithIdentifier:identifier];
             if (type) [contentTypes addObject:type];
         }
-        /* Import a local copy so iOS 14.5 providers deliver the callback
-         * reliably.  When a provider returns an original URL through another
-         * path, the export code below can still reuse its parent directory. */
+        /* Import a copy so document providers deliver the callback reliably.
+         * When a provider returns an original URL through another path, the
+         * export code below can still reuse its parent directory. */
         if (contentTypes.count) {
             picker = [[UIDocumentPickerViewController alloc]
                       initForOpeningContentTypes:contentTypes asCopy:YES];
@@ -248,10 +248,8 @@ static void MBCRemoveStagedExport(NSURL *url)
     self.exportCompletion = completion;
     UIDocumentPickerViewController *picker = nil;
     if (@available(iOS 14.0, *)) {
-        /* Export the disposable staged file through the provider.  The
-         * iOS 14.5 local Files provider presents this copy form as a Save
-         * operation; the no-copy Move form can dismiss without completing a
-         * provider transaction on that runtime. */
+        /* Export the disposable staged file as a copy. Some providers can
+         * dismiss a move operation without completing the transaction. */
         picker = [[UIDocumentPickerViewController alloc]
                      initForExportingURLs:@[stagedURL] asCopy:YES];
         NSURL *directoryURL = [self.lastImportedURL URLByDeletingLastPathComponent];
@@ -313,10 +311,8 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
 - (void)documentPicker:(UIDocumentPickerViewController *)controller
 didPickDocumentAtURL:(NSURL *)url
 {
-    /* iOS 14's local Files provider has been observed to use the deprecated
-     * singular callback even for a picker created with a modern initializer.
-     * Normalize it into the plural path so export staging and cleanup remain
-     * identical on iOS 13 and iOS 14. */
+    /* Providers may use the singular callback with a modern initializer.
+     * Normalize it into the plural path to share export staging and cleanup. */
     [self documentPicker:controller
   didPickDocumentsAtURLs:url ? @[url] : @[]];
 }

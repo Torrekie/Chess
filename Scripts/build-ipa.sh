@@ -22,7 +22,7 @@ trap 'rm -rf "$STAGING_DIR"' EXIT
 mkdir "$STAGING_DIR/Payload"
 ditto "$DERIVED_DATA/Build/Products/Default-iphoneos/Chess.app" \
     "$STAGING_DIR/Payload/Chess.app"
-ldid -S"$ROOT_DIR/Resources/ChessIOS.entitlements" -Icom.apple.Chess \
+ldid -S"$ROOT_DIR/Resources/ChessIOS-AdHoc.entitlements" -Icom.apple.Chess \
     "$STAGING_DIR/Payload/Chess.app/Chess"
 ditto -c -k --keepParent "$STAGING_DIR/Payload" "$OUTPUT_DIR/Chess.ipa"
 printf 'Created %s\n' "$OUTPUT_DIR/Chess.ipa"

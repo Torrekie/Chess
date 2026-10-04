@@ -1,0 +1,34 @@
+OpenGL compatibility dependencies
+
+gl4es is vendored from https://github.com/ptitSeb/gl4es at commit
+a444cc94b17c672c66c3e6ce07428dc603034db1. Its source and headers provide
+desktop fixed-function OpenGL over the system OpenGL ES 2 driver.
+The upstream source list is used for the static iOS build. The unused legacy
+GLU mangling header is omitted; the separate Mesa GLU subset supplies GLU.
+The original MIT license is in gl4es/LICENSE; individual files retain their
+notices.
+The Apple build replaces two unsupported compiler aliases in directstate.c
+with forwarding functions.
+glstate.c removes a duplicate fixed-function emulator allocation during
+context creation and releases the emulator state and ARB matrix pointer
+array and immediate-mode index buffer when the context is destroyed.
+getter.c handles the local-viewer
+and separate-specular lighting queries from the emulator state instead
+of forwarding desktop-only enums to OpenGL ES.
+
+GLU contains the quadric and projection utilities from Mesa GLU 9.0.3,
+https://archive.mesa3d.org/glu/glu-9.0.3.tar.xz. Tessellation, NURBS and
+mipmap utilities are omitted. The files retain the SGI Free Software
+License B version 2.0 and original copyright notices.
+
+These components are built from source by Scripts/build-gl-compat.sh.
+Native OpenGLES headers remain separate from the gl4es compatibility
+headers so the wrapper can resolve the real framework entry points.
+Sources/MBCIOSGLBridge.c isolates gl4es' internal context-state API for
+independent EAGL contexts, releases its program and shader maps at teardown,
+disables the color-renderbuffer replacement workaround so EAGL presents
+the actual drawing attachment, and synchronizes tracked renderbuffer dimensions after native drawable
+and multisample storage allocation. All wrapper calls run on the main
+thread while their corresponding EAGL context is current.
+The bridge checks generated program link status before presenting a frame;
+the renderer also rejects failed texture uploads during preparation.

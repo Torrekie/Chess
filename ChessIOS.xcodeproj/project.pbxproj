@@ -6,6 +6,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A7FDDC000000000000000006 /* ImageIO.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7FDDC000000000000000007 /* ImageIO.framework */;};
+		9D7D2408BE0A5184D547A777 /* MBCIOSBoardBackend.mm in Sources */ = {isa = PBXBuildFile; fileRef = 11D0DA8EF8147E4B2264094C /* MBCIOSBoardBackend.mm */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		B7E2203CE86F6304A712024E /* MBCIOSRendererPreferences.mm in Sources */ = {isa = PBXBuildFile; fileRef = E2D0011DCB94DB8E70328E25 /* MBCIOSRendererPreferences.mm */;};
+		126C7350E31D499465DE2FB4 /* MBCIOSOpenGLView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2CFE79BCCF3F7B416C490CF4 /* MBCIOSOpenGLView.mm */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		53BD1A1274722CF7B3361229 /* MBCIOSGLBridge.c in Sources */ = {isa = PBXBuildFile; fileRef = D518A8C1C8A28952409E94F3 /* MBCIOSGLBridge.c */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include -DNOX11 -DNOEGL";};};
+		9A151A0D4F380FC84322DE9B /* MBCIOSGLDriver.c in Sources */ = {isa = PBXBuildFile; fileRef = D0F351C841A2EC256F02ABA9 /* MBCIOSGLDriver.c */;};
+		22FCA828F6CA3DEF0DEC91C8 /* MBCBoardView.mm in Sources */ = {isa = PBXBuildFile; fileRef = C6B4A239CB904CE56CDF8D57 /* MBCBoardView.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc -I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		BA04AC72044DE56E2C582BFA /* MBCBoardViewDraw.mm in Sources */ = {isa = PBXBuildFile; fileRef = DB49F6140C9AA03C944EF3B2 /* MBCBoardViewDraw.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc -I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		88281F5C535D45E0A1F7DFDF /* MBCBoardViewModels.mm in Sources */ = {isa = PBXBuildFile; fileRef = B06FBF0CCBFE690F0A5C42B2 /* MBCBoardViewModels.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc -I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		46F257E6315885C260151075 /* MBCBoardViewTextures.mm in Sources */ = {isa = PBXBuildFile; fileRef = EB8FA6640BED153CDD756EB9 /* MBCBoardViewTextures.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc -I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		DB400EF506AD2139C3D7FAF6 /* MBCBoardViewIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = EBB682D37333DC765E06005B /* MBCBoardViewIOS.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc -I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		357C46C65C7BCCBC8DD504FD /* MBCBoardViewIOSTouch.mm in Sources */ = {isa = PBXBuildFile; fileRef = 76477BB9FB44038B76EA71EE /* MBCBoardViewIOSTouch.mm */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		1A1A6A5BE0D4D430264F147A /* MBCBoardViewIOSAccessibility.mm in Sources */ = {isa = PBXBuildFile; fileRef = 87F204C48452F02AACFB4810 /* MBCBoardViewIOSAccessibility.mm */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
+		A7FDDC000000000000000001 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7FDDC000000000000000002 /* OpenGLES.framework */;};
+		A7FDDC000000000000000003 /* ThirdPartyNotices.txt in Resources */ = {isa = PBXBuildFile; fileRef = A7FDDC000000000000000004 /* ThirdPartyNotices.txt */;};
 		00000000000000000000004A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000049 /* UIKit.framework */;};
 		00000000000000000000004C /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004B /* MetalKit.framework */;};
 		00000000000000000000004E /* MetalPerformanceShaders.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004D /* MetalPerformanceShaders.framework */;};
@@ -16,7 +31,7 @@
 		000000000000000000000052 /* MBCMoveGenerator.mm in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* MBCMoveGenerator.mm */; settings = {COMPILER_FLAGS = "-fno-objc-arc";};};
 		000000000000000000000053 /* MBCIOSCompatibility.mm in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000013 /* MBCIOSCompatibility.mm */;};
 		000000000000000000000054 /* MBCBoardCommon.mm in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000014 /* MBCBoardCommon.mm */;};
-		000000000000000000000055 /* MBCDrawStyle.m in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* MBCDrawStyle.m */;};
+		000000000000000000000055 /* MBCDrawStyle.m in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* MBCDrawStyle.m */; settings = {COMPILER_FLAGS = "-I$(SRCROOT)/ThirdParty/gl4es/include -I$(SRCROOT)/ThirdParty/GLU/include";};};
 		000000000000000000000056 /* MBCMathUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000016 /* MBCMathUtilities.m */;};
 		000000000000000000000057 /* MBCDebug.cp in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000017 /* MBCDebug.cp */;};
 		000000000000000000000058 /* MBCMetalCamera.mm in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000018 /* MBCMetalCamera.mm */;};
@@ -101,9 +116,39 @@
 		000000000000000000000213 /* bug.opn in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000203 /* bug.opn */;};
 		000000000000000000000214 /* nbook.db in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000204 /* nbook.db */;};
 		000000000000000000000215 /* zbook.db in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000205 /* zbook.db */;};
+		A7FDDC000000000000000011 /* MBCGraphicsTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = A7FDDC000000000000000010;};
+		A7FDDC000000000000000024 /* MBCRendererSwitchTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = A7FDDC000000000000000023;};
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A7FDDC000000000000000007 /* ImageIO.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ImageIO.framework; path = System/Library/Frameworks/ImageIO.framework; sourceTree = SDKROOT;};
+		D46BB91A4347DC25716D3878 /* MBCIOSBoardPresentation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSBoardPresentation.h; sourceTree = "<group>";};
+		329A1089E1876610027697D9 /* MBCIOSBoardBackend.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSBoardBackend.h; sourceTree = "<group>";};
+		11D0DA8EF8147E4B2264094C /* MBCIOSBoardBackend.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCIOSBoardBackend.mm; sourceTree = "<group>";};
+		C26F0B5151F22C814FC43553 /* MBCIOSRendererPreferences.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSRendererPreferences.h; sourceTree = "<group>";};
+		E2D0011DCB94DB8E70328E25 /* MBCIOSRendererPreferences.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCIOSRendererPreferences.mm; sourceTree = "<group>";};
+		82C2F7CC875B608E481A9472 /* MBCIOSOpenGLView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSOpenGLView.h; sourceTree = "<group>";};
+		2CFE79BCCF3F7B416C490CF4 /* MBCIOSOpenGLView.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCIOSOpenGLView.mm; sourceTree = "<group>";};
+		6EA7C1CF408F62FED2B68171 /* MBCIOSGLBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSGLBridge.h; sourceTree = "<group>";};
+		D518A8C1C8A28952409E94F3 /* MBCIOSGLBridge.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MBCIOSGLBridge.c; sourceTree = "<group>";};
+		D0F351C841A2EC256F02ABA9 /* MBCIOSGLDriver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = MBCIOSGLDriver.c; sourceTree = "<group>";};
+		EBC270F80776598DDF7F13B4 /* MBCOpenGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCOpenGL.h; sourceTree = "<group>";};
+		D6086EAD8E1195ABBC3C6FAF /* MBCBoardView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardView.h; sourceTree = "<group>";};
+		C6B4A239CB904CE56CDF8D57 /* MBCBoardView.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardView.mm; sourceTree = "<group>";};
+		9B3297461F321E35596103D0 /* MBCBoardViewDraw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardViewDraw.h; sourceTree = "<group>";};
+		DB49F6140C9AA03C944EF3B2 /* MBCBoardViewDraw.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewDraw.mm; sourceTree = "<group>";};
+		A6046DDDCD1348573C9EFE7E /* MBCBoardViewModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardViewModels.h; sourceTree = "<group>";};
+		B06FBF0CCBFE690F0A5C42B2 /* MBCBoardViewModels.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewModels.mm; sourceTree = "<group>";};
+		7B5347FD6BC90897DE546059 /* MBCBoardViewTextures.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardViewTextures.h; sourceTree = "<group>";};
+		EB8FA6640BED153CDD756EB9 /* MBCBoardViewTextures.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewTextures.mm; sourceTree = "<group>";};
+		EBB682D37333DC765E06005B /* MBCBoardViewIOS.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewIOS.mm; sourceTree = "<group>";};
+		76477BB9FB44038B76EA71EE /* MBCBoardViewIOSTouch.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewIOSTouch.mm; sourceTree = "<group>";};
+		87F204C48452F02AACFB4810 /* MBCBoardViewIOSAccessibility.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCBoardViewIOSAccessibility.mm; sourceTree = "<group>";};
+		74063341C35C727C7AA74B70 /* MBCBoardViewIOSTouch.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardViewIOSTouch.inc; sourceTree = "<group>";};
+		30B9BB761531CC1184FC5254 /* MBCBoardViewIOSAccessibility.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCBoardViewIOSAccessibility.inc; sourceTree = "<group>";};
+		402016CC2390C31905A0268E /* MBCIOSChessSquareElement.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCIOSChessSquareElement.h; sourceTree = "<group>";};
+		A7FDDC000000000000000002 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT;};
+		A7FDDC000000000000000004 /* ThirdPartyNotices.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = ThirdPartyNotices.txt; path = Resources/ThirdPartyNotices.txt; sourceTree = SOURCE_ROOT;};
 		000000000000000000000003 /* Chess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chess.app; sourceTree = BUILT_PRODUCTS_DIR;};
 		000000000000000000000010 /* ChessIOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "ChessIOS-Info.plist"; path = "Resources/ChessIOS-Info.plist"; sourceTree = "<group>";};
 		000000000000000000000011 /* MBCBoard.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = "MBCBoard.mm"; path = "MBCBoard.mm"; sourceTree = "<group>";};
@@ -294,10 +339,39 @@
 		000000000000000000000203 /* bug.opn */ = {isa = PBXFileReference; lastKnownFileType = file; name = "bug.opn"; path = "sjeng/books/bug.opn"; sourceTree = "<group>";};
 		000000000000000000000204 /* nbook.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = "nbook.db"; path = "sjeng/books/nbook.db"; sourceTree = "<group>";};
 		000000000000000000000205 /* zbook.db */ = {isa = PBXFileReference; lastKnownFileType = file; name = "zbook.db"; path = "sjeng/books/zbook.db"; sourceTree = "<group>";};
+		A7FDDC000000000000000010 /* MBCGraphicsTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCGraphicsTests.mm; sourceTree = "<group>";};
+		A7FDDC000000000000000012 /* ChessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = ChessTests.xctest; sourceTree = BUILT_PRODUCTS_DIR;};
+		A7FDDC000000000000000023 /* MBCRendererSwitchTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objcpp; path = MBCRendererSwitchTests.mm; sourceTree = "<group>";};
+		A7FDDC000000000000000025 /* MBCGraphicsTestDefaults.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MBCGraphicsTestDefaults.h; sourceTree = "<group>";};
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		000000000000000000000005 /* Sources */ = {isa = PBXGroup; children = (
+			D46BB91A4347DC25716D3878 /* MBCIOSBoardPresentation.h */,
+			329A1089E1876610027697D9 /* MBCIOSBoardBackend.h */,
+			11D0DA8EF8147E4B2264094C /* MBCIOSBoardBackend.mm */,
+			C26F0B5151F22C814FC43553 /* MBCIOSRendererPreferences.h */,
+			E2D0011DCB94DB8E70328E25 /* MBCIOSRendererPreferences.mm */,
+			82C2F7CC875B608E481A9472 /* MBCIOSOpenGLView.h */,
+			2CFE79BCCF3F7B416C490CF4 /* MBCIOSOpenGLView.mm */,
+			6EA7C1CF408F62FED2B68171 /* MBCIOSGLBridge.h */,
+			D518A8C1C8A28952409E94F3 /* MBCIOSGLBridge.c */,
+			D0F351C841A2EC256F02ABA9 /* MBCIOSGLDriver.c */,
+			EBC270F80776598DDF7F13B4 /* MBCOpenGL.h */,
+			D6086EAD8E1195ABBC3C6FAF /* MBCBoardView.h */,
+			C6B4A239CB904CE56CDF8D57 /* MBCBoardView.mm */,
+			9B3297461F321E35596103D0 /* MBCBoardViewDraw.h */,
+			DB49F6140C9AA03C944EF3B2 /* MBCBoardViewDraw.mm */,
+			A6046DDDCD1348573C9EFE7E /* MBCBoardViewModels.h */,
+			B06FBF0CCBFE690F0A5C42B2 /* MBCBoardViewModels.mm */,
+			7B5347FD6BC90897DE546059 /* MBCBoardViewTextures.h */,
+			EB8FA6640BED153CDD756EB9 /* MBCBoardViewTextures.mm */,
+			EBB682D37333DC765E06005B /* MBCBoardViewIOS.mm */,
+			76477BB9FB44038B76EA71EE /* MBCBoardViewIOSTouch.mm */,
+			87F204C48452F02AACFB4810 /* MBCBoardViewIOSAccessibility.mm */,
+			74063341C35C727C7AA74B70 /* MBCBoardViewIOSTouch.inc */,
+			30B9BB761531CC1184FC5254 /* MBCBoardViewIOSAccessibility.inc */,
+			402016CC2390C31905A0268E /* MBCIOSChessSquareElement.h */,
 			000000000000000000000011 /* MBCBoard.mm */,
 			000000000000000000000012 /* MBCMoveGenerator.mm */,
 			000000000000000000000013 /* MBCIOSCompatibility.mm */,
@@ -401,6 +475,8 @@
 			0000000000000000000000C9 /* InfoPlist.strings */,
 		); name = Resources; path = .; sourceTree = "<group>";};
 		000000000000000000000007 /* Frameworks */ = {isa = PBXGroup; children = (
+			A7FDDC000000000000000007 /* ImageIO.framework */,
+			A7FDDC000000000000000002 /* OpenGLES.framework */,
 			000000000000000000000049 /* UIKit.framework */,
 			00000000000000000000004B /* MetalKit.framework */,
 			00000000000000000000004D /* MetalPerformanceShaders.framework */,
@@ -414,14 +490,18 @@
 			000000000000000000000127 /* GameKit.framework */,
 		); name = Frameworks; sourceTree = "<group>";};
 		000000000000000000000008 /* Products */ = {isa = PBXGroup; children = (
+			A7FDDC000000000000000012 /* ChessTests.xctest */,
 			000000000000000000000003 /* Chess.app */,
 		); name = Products; sourceTree = "<group>";};
 		000000000000000000000004 /* Chess */ = {isa = PBXGroup; children = (
+			A7FDDC00000000000000001E /* Tests */,
+			A7FDDC000000000000000004 /* ThirdPartyNotices.txt */,
 			000000000000000000000005 /* Sources */,
 			000000000000000000000006 /* Resources */,
 			000000000000000000000007 /* Frameworks */,
 			000000000000000000000008 /* Products */,
 		); sourceTree = "<group>";};
+		A7FDDC00000000000000001E /* Tests */ = {isa = PBXGroup; children = (A7FDDC000000000000000010, A7FDDC000000000000000023, A7FDDC000000000000000025,); path = Tests; sourceTree = "<group>";};
 /* End PBXGroup section */
 
 /* Begin PBXVariantGroup section */
@@ -523,6 +603,18 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		000000000000000000000009 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (
+			9D7D2408BE0A5184D547A777 /* MBCIOSBoardBackend.mm in Sources */,
+			B7E2203CE86F6304A712024E /* MBCIOSRendererPreferences.mm in Sources */,
+			126C7350E31D499465DE2FB4 /* MBCIOSOpenGLView.mm in Sources */,
+			53BD1A1274722CF7B3361229 /* MBCIOSGLBridge.c in Sources */,
+			9A151A0D4F380FC84322DE9B /* MBCIOSGLDriver.c in Sources */,
+			22FCA828F6CA3DEF0DEC91C8 /* MBCBoardView.mm in Sources */,
+			BA04AC72044DE56E2C582BFA /* MBCBoardViewDraw.mm in Sources */,
+			88281F5C535D45E0A1F7DFDF /* MBCBoardViewModels.mm in Sources */,
+			46F257E6315885C260151075 /* MBCBoardViewTextures.mm in Sources */,
+			DB400EF506AD2139C3D7FAF6 /* MBCBoardViewIOS.mm in Sources */,
+			357C46C65C7BCCBC8DD504FD /* MBCBoardViewIOSTouch.mm in Sources */,
+			1A1A6A5BE0D4D430264F147A /* MBCBoardViewIOSAccessibility.mm in Sources */,
 			000000000000000000000051,
 			000000000000000000000052,
 			000000000000000000000053,
@@ -560,10 +652,12 @@
 			000000000000000000000137,
 			00000000000000000000013B,
 		); runOnlyForDeploymentPostprocessing = 0;};
+		A7FDDC000000000000000013 /* Test Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A7FDDC000000000000000011, A7FDDC000000000000000024,); runOnlyForDeploymentPostprocessing = 0;};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
 		00000000000000000000000A /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			A7FDDC000000000000000003 /* ThirdPartyNotices.txt in Resources */,
 			000000000000000000000210 /* normal.opn in Resources */,
 			000000000000000000000211 /* suicide.opn in Resources */,
 			000000000000000000000212 /* losers.opn in Resources */,
@@ -617,6 +711,8 @@
 
 /* Begin PBXFrameworksBuildPhase section */
 		00000000000000000000000B /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (
+			A7FDDC000000000000000006 /* ImageIO.framework in Frameworks */,
+			A7FDDC000000000000000001 /* OpenGLES.framework in Frameworks */,
 			00000000000000000000004A /* UIKit.framework in Frameworks */,
 			00000000000000000000004C /* MetalKit.framework in Frameworks */,
 			00000000000000000000004E /* MetalPerformanceShaders.framework in Frameworks */,
@@ -629,24 +725,53 @@
 			0000000000000000000000B5 /* UniformTypeIdentifiers.framework in Frameworks */,
 			000000000000000000000126 /* GameKit.framework in Frameworks */,
 		); runOnlyForDeploymentPostprocessing = 0;};
+		A7FDDC000000000000000014 /* Test Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0;};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		A7FDDC000000000000000005 /* OpenGL Compatibility */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputFileListPaths = ("$(SRCROOT)/Scripts/gl-compat-inputs.xcfilelist",);
+			name = "OpenGL Compatibility";
+			outputPaths = ("$(TARGET_TEMP_DIR)/GLCompatibility/lib/libChessGL4ES.a", "$(TARGET_TEMP_DIR)/GLCompatibility/lib/libChessGLU.a",);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "\"$SRCROOT/Scripts/build-gl-compat.sh\" \"$TARGET_TEMP_DIR/GLCompatibility\" \"$PLATFORM_NAME\" \"$ARCHS\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		A7FDDC00000000000000001C = {isa = PBXContainerItemProxy; containerPortal = 000000000000000000000001; proxyType = 1; remoteGlobalIDString = 000000000000000000000002; remoteInfo = Chess;};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		A7FDDC00000000000000001D = {isa = PBXTargetDependency; target = 000000000000000000000002; targetProxy = A7FDDC00000000000000001C;};
+/* End PBXTargetDependency section */
+
 /* Begin PBXNativeTarget section */
-		000000000000000000000002 /* Chess */ = {isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000000F /* Build configuration list for PBXNativeTarget "Chess" */; buildPhases = (000000000000000000000009 /* Sources */, 00000000000000000000000A /* Resources */, 00000000000000000000000B /* Frameworks */,); buildRules = (); dependencies = (); name = Chess; productName = Chess; productReference = 000000000000000000000003 /* Chess.app */; productType = "com.apple.product-type.application";};
+		000000000000000000000002 /* Chess */ = {isa = PBXNativeTarget; buildConfigurationList = 00000000000000000000000F /* Build configuration list for PBXNativeTarget "Chess" */; buildPhases = (A7FDDC000000000000000005 /* OpenGL Compatibility */, 000000000000000000000009 /* Sources */, 00000000000000000000000A /* Resources */, 00000000000000000000000B /* Frameworks */,); buildRules = (); dependencies = (); name = Chess; productName = Chess; productReference = 000000000000000000000003 /* Chess.app */; productType = "com.apple.product-type.application";};
+		A7FDDC00000000000000001B /* ChessTests */ = {isa = PBXNativeTarget; buildConfigurationList = A7FDDC00000000000000001A; buildPhases = (A7FDDC000000000000000013, A7FDDC000000000000000014,); buildRules = (); dependencies = (A7FDDC00000000000000001D,); name = ChessTests; productName = ChessTests; productReference = A7FDDC000000000000000012; productType = "com.apple.product-type.bundle.unit-test";};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		000000000000000000000001 /* Project object */ = {isa = PBXProject; attributes = {LastUpgradeCheck = 1540; ORGANIZATIONNAME = "Apple OSS Chess"; TargetAttributes = {000000000000000000000002 = {CreatedOnToolsVersion = 15.2;};};}; buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXProject "ChessIOS" */; compatibilityVersion = "Xcode 3.2"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ar, ca, cs, da, de, el, en_AU, en_GB, es, es_419, fi, fr, fr_CA, he, hi, hr, hu, id, it, ja, ko, ms, nl, no, pl, pt_BR, pt_PT, ro, ru, sk, sl, sv, th, tr, uk, vi, zh_CN, zh_HK, zh_TW); mainGroup = 000000000000000000000004 /* Chess */; productRefGroup = 000000000000000000000008 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000002 /* Chess */,);};
+		000000000000000000000001 /* Project object */ = {isa = PBXProject; attributes = {LastUpgradeCheck = 1540; ORGANIZATIONNAME = "Apple OSS Chess"; TargetAttributes = {000000000000000000000002 = {CreatedOnToolsVersion = 15.2;};};}; buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXProject "ChessIOS" */; compatibilityVersion = "Xcode 3.2"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ar, ca, cs, da, de, el, en_AU, en_GB, es, es_419, fi, fr, fr_CA, he, hi, hr, hu, id, it, ja, ko, ms, nl, no, pl, pt_BR, pt_PT, ro, ru, sk, sl, sv, th, tr, uk, vi, zh_CN, zh_HK, zh_TW); mainGroup = 000000000000000000000004 /* Chess */; productRefGroup = 000000000000000000000008 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (000000000000000000000002 /* Chess */, A7FDDC00000000000000001B /* ChessTests */,);};
 /* End PBXProject section */
 
 /* Begin XCBuildConfiguration section */
 		00000000000000000000000C /* Default */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_CXX_LANGUAGE_STANDARD = "gnu++14"; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 13.0; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2";}; name = Default;};
-		00000000000000000000000D /* Default */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CODE_SIGNING_ALLOWED = NO; CURRENT_PROJECT_VERSION = 3.18; DEBUG_INFORMATION_FORMAT = dwarf; GCC_GENERATE_DEBUGGING_SYMBOLS = NO; GCC_OPTIMIZATION_LEVEL = s; COPY_PHASE_STRIP = YES; STRIP_INSTALLED_PRODUCT = YES; ENABLE_NS_ASSERTIONS = NO; INFOPLIST_FILE = "Resources/ChessIOS-Info.plist"; CODE_SIGN_ENTITLEMENTS = "Resources/ChessIOS.entitlements"; IPHONEOS_DEPLOYMENT_TARGET = 13.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 3.18; PRODUCT_BUNDLE_IDENTIFIER = com.apple.Chess; PRODUCT_NAME = Chess; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2";}; name = Default;};
+		00000000000000000000000D /* Default */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ENABLE_BITCODE = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CODE_SIGNING_ALLOWED = NO; LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(TARGET_TEMP_DIR)/GLCompatibility/lib"); OTHER_LDFLAGS = "$(inherited) -lChessGLU -lChessGL4ES"; CURRENT_PROJECT_VERSION = 3.18; DEBUG_INFORMATION_FORMAT = dwarf; GCC_GENERATE_DEBUGGING_SYMBOLS = NO; GCC_OPTIMIZATION_LEVEL = s; COPY_PHASE_STRIP = YES; STRIP_INSTALLED_PRODUCT = YES; ENABLE_NS_ASSERTIONS = NO; INFOPLIST_FILE = "Resources/ChessIOS-Info.plist"; CODE_SIGN_ENTITLEMENTS = "Resources/ChessIOS.entitlements"; IPHONEOS_DEPLOYMENT_TARGET = 13.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 3.18; PRODUCT_BUNDLE_IDENTIFIER = com.apple.Chess; PRODUCT_NAME = Chess; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2";}; name = Default;};
+		A7FDDC000000000000000019 /* Default */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; HEADER_SEARCH_PATHS = ("$(SRCROOT)/Sources",); FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(PLATFORM_DIR)/Developer/Library/Frameworks",); OTHER_LDFLAGS = "$(inherited) -framework XCTest -framework UIKit -framework CoreGraphics -framework OpenGLES"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.apple.Chess.Tests; PRODUCT_NAME = ChessTests; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chess.app/Chess"; TEST_TARGET_NAME = Chess; }; name = Default;};
+		A7FDDC000000000000000020 /* Testing */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_CXX_LANGUAGE_STANDARD = "gnu++14"; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 13.0; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2";}; name = Testing;};
+		A7FDDC000000000000000021 /* Testing */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; ENABLE_BITCODE = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CODE_SIGNING_ALLOWED = NO; LIBRARY_SEARCH_PATHS = ("$(inherited)", "$(TARGET_TEMP_DIR)/GLCompatibility/lib"); OTHER_LDFLAGS = "$(inherited) -lChessGLU -Wl,-force_load,$(TARGET_TEMP_DIR)/GLCompatibility/lib/libChessGL4ES.a -Wl,-export_dynamic"; CURRENT_PROJECT_VERSION = 3.18; DEBUG_INFORMATION_FORMAT = dwarf; GCC_GENERATE_DEBUGGING_SYMBOLS = NO; GCC_OPTIMIZATION_LEVEL = s; COPY_PHASE_STRIP = NO; ENABLE_TESTABILITY = YES; DEAD_CODE_STRIPPING = NO; STRIP_INSTALLED_PRODUCT = NO; ENABLE_NS_ASSERTIONS = NO; INFOPLIST_FILE = "Resources/ChessIOS-Info.plist"; CODE_SIGN_ENTITLEMENTS = "Resources/ChessIOS.entitlements"; IPHONEOS_DEPLOYMENT_TARGET = 13.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; MARKETING_VERSION = 3.18; PRODUCT_BUNDLE_IDENTIFIER = com.apple.Chess; PRODUCT_NAME = Chess; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = "1,2";}; name = Testing;};
+		A7FDDC000000000000000022 /* Testing */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGNING_ALLOWED = NO; GENERATE_INFOPLIST_FILE = YES; HEADER_SEARCH_PATHS = ("$(SRCROOT)/Sources",); FRAMEWORK_SEARCH_PATHS = ("$(inherited)", "$(PLATFORM_DIR)/Developer/Library/Frameworks",); OTHER_LDFLAGS = "$(inherited) -framework XCTest -framework UIKit -framework CoreGraphics -framework OpenGLES"; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.apple.Chess.Tests; PRODUCT_NAME = ChessTests; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chess.app/Chess"; TEST_TARGET_NAME = Chess; }; name = Testing;};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00000000000000000000000E /* Build configuration list for PBXProject "ChessIOS" */ = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000C /* Default */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Default;};
-		00000000000000000000000F /* Build configuration list for PBXNativeTarget "Chess" */ = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000D /* Default */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Default;};
+		00000000000000000000000E /* Build configuration list for PBXProject "ChessIOS" */ = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000C /* Default */, A7FDDC000000000000000020 /* Testing */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Default;};
+		00000000000000000000000F /* Build configuration list for PBXNativeTarget "Chess" */ = {isa = XCConfigurationList; buildConfigurations = (00000000000000000000000D /* Default */, A7FDDC000000000000000021 /* Testing */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Default;};
+		A7FDDC00000000000000001A = {isa = XCConfigurationList; buildConfigurations = (A7FDDC000000000000000019, A7FDDC000000000000000022,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Default;};
 /* End XCConfigurationList section */
 
 	};

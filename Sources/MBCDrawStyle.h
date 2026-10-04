@@ -121,6 +121,7 @@
  @discussion Unloads the OpenGL texture, not needed for Metal Rendering
 */
 - (void)unloadTexture;
+- (BOOL)hasOpenGLTexture;
 
 /*!
  @abstract startStyle:

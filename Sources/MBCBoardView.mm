@@ -50,16 +50,21 @@
 #import "MBCBoardViewDraw.h"
 #import "MBCBoardViewModels.h"
 #import "MBCBoardViewTextures.h"
+#if TARGET_OS_OSX
 #import "MBCBoardViewMouse.h"
-
 #import "MBCAnimation.h"
 #import "MBCController.h"
-#import "MBCPlayer.h"
 #import "MBCBoardWin.h"
+#endif
+#import "MBCPlayer.h"
+#import "MBCDrawStyle.h"
 #import "MBCUserDefaults.h"
 
 #include <algorithm>
 #import <simd/simd.h>
+#if TARGET_OS_IOS
+#import <QuartzCore/CALayer.h>
+#endif
 
 @implementation MBCBoardView
 
@@ -70,6 +75,7 @@
 @synthesize ambient = fAmbient;
 
 
+#if TARGET_OS_OSX
 - (NSOpenGLPixelFormat *)pixelFormatWithFSAA:(int)fsaaSamples
 {
     NSOpenGLPixelFormatAttribute fsaa_attr[] = 
@@ -155,8 +161,9 @@
 
 	return sMax;
 }
+#endif
 
-- (id) initWithFrame:(NSRect)rect
+- (id) initWithFrame:(MBCViewRect)rect
 {
 	float	light_ambient		= 0.125f;
 	GLfloat light_pos[4] 		= { -60.0, 200.0, 0.0, 0.0};
@@ -165,6 +172,7 @@
 	// We first try to enable Full Scene Anti Aliasing if our graphics
 	// hardware lets use get away with it.
 	//
+#if TARGET_OS_OSX
 	NSOpenGLPixelFormat * pixelFormat = nil;
 	for (fMaxFSAA = [self maxAntiAliasing]+2; !pixelFormat; )
 		pixelFormat = [self pixelFormatWithFSAA:(fMaxFSAA -= 2)];
@@ -184,6 +192,16 @@
 		fAnisotropy = std::min(fAnisotropy, 4.0f);
 	} else
 		fAnisotropy	= 0.0f;
+#else
+    self = [super initWithFrame:rect];
+    if (!self) return nil;
+    fCameraZoomScale = 1.0f;
+    fDrawEdgeNotationLabels = YES;
+    self.multipleTouchEnabled = YES;
+    self.backgroundColor = [UIColor clearColor];
+    self.opaque = NO;
+    self.layer.opaque = NO;
+#endif
 	
 	
 	fBoardReflectivity	= 0.3f;
@@ -217,15 +235,25 @@
 	memcpy(fLightPos, light_pos, sizeof(fLightPos));
 	fKeyBuffer			= 0;
 
+#if TARGET_OS_OSX
 	fHandCursor			= [[NSCursor pointingHandCursor] retain];
 	fArrowCursor		= [[NSCursor arrowCursor] retain];
     [self updateTrackingAreas];
+#endif
 
     return self;
 }
 
 - (void)dealloc
 {
+#if TARGET_OS_IOS
+    [self iosRetireRendererWithCompletion:nil];
+    [fBoard release];
+    [fIOSAccessibilitySquareElements release];
+    [fIOSVisibleAccessibilityElements release];
+    [fHintMove release];
+    [fLastMove release];
+#endif
     [fBoardAttr release];
     [fPieceAttr release];
     [fBoardStyle release];
@@ -240,6 +268,7 @@
     [super dealloc];
 }
 
+#if TARGET_OS_OSX
 - (void)updateTrackingAreas 
 {
     [self removeTrackingArea:fTrackingArea];
@@ -288,25 +317,38 @@
 	fIsPickingFormat 	= false;
 	NSLog(@"Size is now %.0fx%.0f FSAA = %d [Max %d]\n", bounds.size.width, bounds.size.height, fCurFSAA, fMaxFSAA);
 }
+#endif
 
 - (void) setStyleForBoard:(NSString *)boardStyle pieces:(NSString *)pieceStyle
 {
+#if TARGET_OS_OSX
 	[[self openGLContext] makeCurrentContext];
+#endif
 	[fBoardStyle release];
 	fBoardStyle = 
 		[[@"Styles" stringByAppendingPathComponent:boardStyle] retain];
 	[fPieceStyle release];
 	fPieceStyle = 
 		[[@"Styles" stringByAppendingPathComponent:pieceStyle] retain];
+#if TARGET_OS_IOS
+    fStylesLoaded = NO;
+    if (self.drawablePrepared && self.renderingActive &&
+        UIApplication.sharedApplication.applicationState != UIApplicationStateBackground) {
+        [self performWithGLContext:^{ [self loadStyles]; fStylesLoaded = YES; }];
+    }
+#else
 	[self loadStyles];
+#endif
     [self setNeedsDisplay: YES];
 }
 
 - (void)awakeFromNib
 {
+#if TARGET_OS_OSX
     fController     = [[self window] windowController];
 	fBoard          = [fController board];
 	fInteractive    = [fController interactive];
+#endif
 }
 
 - (BOOL) isOpaque
@@ -314,28 +356,43 @@
 	return NO;
 }
 
+#if TARGET_OS_OSX
 - (BOOL) mouseDownCanMoveWindow
 {
 	return NO;
 }
+#endif
 
-- (void) drawRect:(NSRect)rect
+- (void) drawRect:(MBCViewRect)rect
 {
+#if TARGET_OS_IOS
+    [self drawNow];
+#else
 	[self drawPosition];
+#endif
 }
 
 - (void) reshape
 {
+#if TARGET_OS_OSX
 	[self pickPixelFormat:NO];
+#endif
 	[self needsUpdate];
 }
 
 - (void) drawNow
 {
+#if TARGET_OS_IOS
+    if (!self.drawablePrepared || self.rendererRetired || !self.renderingActive ||
+        fOrientationTransitioning ||
+        UIApplication.sharedApplication.applicationState == UIApplicationStateBackground) return;
+    [self performWithGLContext:^{ [self drawBoardFrame]; }];
+#else
 	[self lockFocus];
 	[self drawPosition];
 	[self unlockFocus];
     [self setNeedsDisplay:NO];
+#endif
 }
 
 - (void) profileDraw
@@ -365,6 +422,10 @@
 {
 	fVariant 		= variant;
 	fSide	 		= side;
+#if TARGET_OS_IOS
+    fAwaitingPromotionChoice = NO;
+    fLegalDropTargetsValid = NO;
+#endif
 	[self endGame];
 	if (side != kNeitherSide && [self facing] != kNeitherSide) {
 		//
@@ -446,6 +507,9 @@
 
 - (MBCSquare) 	positionToSquare:(const MBCPosition *)position
 {
+#if TARGET_OS_IOS
+    if (!isfinite((*position)[0]) || !isfinite((*position)[2])) return kInvalidSquare;
+#endif
 	GLfloat	px	= (*position)[0];
 	GLfloat pz	= (*position)[2];
 	GLfloat pxa = fabs(px);
@@ -470,6 +534,9 @@
 
 - (MBCSquare) positionToSquareOrRegion:(const MBCPosition *)position
 {
+#if TARGET_OS_IOS
+    if (!isfinite((*position)[0]) || !isfinite((*position)[2])) return kInvalidSquare;
+#endif
 	GLfloat	px	= (*position)[0];
 	GLfloat pz	= (*position)[2];
 	GLfloat pxa = fabs(px);
@@ -536,6 +603,21 @@
 {
 	MBCPosition	pos;
 
+#if TARGET_OS_IOS
+    if (square == kWhitePromoSquare || square == kBlackPromoSquare) {
+        float direction = square == kWhitePromoSquare ? -1.0f : 1.0f;
+        return {{direction * kPromotionPieceX, 0.0f, direction * kPromotionPieceZ}};
+    }
+    if (square > kInHandSquare && square <= kInHandSquare + Black(PAWN)) {
+        MBCPiece piece = square - kInHandSquare;
+        for (int index = 0; index < 5; ++index) {
+            if (Piece(piece) == gInHandOrder[index]) {
+                float z = kInHandPieceZOffset + kInHandPieceSize * (index + 0.5f);
+                return {{kInHandPieceX, 0.0f, Color(piece) == kBlackPiece ? -z : z}};
+            }
+        }
+    }
+#endif
 	if (square > kInHandSquare) {
 		pos[0] = 44.0f;
 		pos[1] = 0.0f;
@@ -577,8 +659,13 @@
 - (void) animationDone
 {
 	fInAnimation	= false;
+#if TARGET_OS_IOS
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:MBCIOSBoardInteractionEndedNotification object:self];
+#endif
 }
 
+#if TARGET_OS_OSX
 - (IBAction)increaseFSAA:(id)sender
 {
     fMaxFSAA = fMaxFSAA ? fMaxFSAA * 2 : 2;
@@ -593,6 +680,7 @@
     [self pickPixelFormat:NO];
 	[self needsUpdate];
 }
+#endif
 
 - (MBCDrawStyle *)boardDrawStyleAtIndex:(NSUInteger)index {
     NSAssert(index < 2, @"index should be 0 or 1");

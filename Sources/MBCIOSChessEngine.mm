@@ -119,6 +119,16 @@ static void *MBCIOSjengThreadMain(void *opaque)
     self.observingMoves = NO;
 }
 
+- (void)setMoveSource:(id)moveSource
+{
+    NSAssert(NSThread.isMainThread, @"Engine input sources change on the main thread.");
+    if (_moveSource == moveSource) return;
+    BOOL wasObserving = self.observingMoves;
+    [self removeMoveObservers];
+    _moveSource = moveSource;
+    if (wasObserving && self.isRunning) [self installMoveObservers];
+}
+
 - (void)installMoveObservers
 {
     [self removeMoveObservers];

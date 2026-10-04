@@ -2,8 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- The iOS target carries only the Game Center capability.  The macOS
-	     sandbox, group-session and TCC keys are intentionally not shared. -->
+	<!-- Ordinary iOS app signing uses the system application sandbox for
+	     foreground GPU access. The ad-hoc system-app package has a separate
+	     entitlement file for its IOKit user-client allowance. -->
 	<key>com.apple.developer.game-center</key>
 	<true/>
 </dict>

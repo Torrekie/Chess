@@ -150,6 +150,9 @@ const float kReflectionBlurSigma = 3.f;
      @abstract The MTLCommandQueue command queue for generating command buffers for submitting draw commands
      */
     id<MTLCommandQueue> _commandQueue;
+    id<MTLCommandBuffer> _lastSubmittedCommandBuffer;
+    NSUInteger _pendingFrameCount;
+    NSMutableArray<void (^)(void)> *_pendingFrameCompletions;
     
     /*!
      @abstract The default Metal library with Metal shaders for rendering
@@ -963,8 +966,20 @@ static NSString *MBCMetalSupportedStyle(NSString *style) {
     [self drawReflectionMap:commandBuffer];
     
     dispatch_semaphore_t semaphore = _inFlightSemaphore;
+    ++_pendingFrameCount;
+    __weak MBCMetalRenderer *weakRenderer = self;
     [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> buffer) {
         dispatch_semaphore_signal(semaphore);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            MBCMetalRenderer *renderer = weakRenderer;
+            if (!renderer) return;
+            if (renderer->_pendingFrameCount) --renderer->_pendingFrameCount;
+            if (!renderer->_pendingFrameCount) {
+                NSArray<void (^)(void)> *completions = [renderer->_pendingFrameCompletions copy];
+                [renderer->_pendingFrameCompletions removeAllObjects];
+                for (void (^completion)(void) in completions) completion();
+            }
+        });
     }];
     
     MTLRenderPassDescriptor *renderPassDescriptor = _mtkView.currentRenderPassDescriptor;
@@ -1032,7 +1047,23 @@ static NSString *MBCMetalSupportedStyle(NSString *style) {
     }
 
     // Finalize rendering here & push the command buffer to the GPU
+    _lastSubmittedCommandBuffer = commandBuffer;
     [commandBuffer commit];
+}
+
+- (void)completePendingFramesWithCompletion:(void (^)(void))completion {
+    if (!_pendingFrameCount) {
+        if (completion) completion();
+        return;
+    }
+    if (completion) {
+        if (!_pendingFrameCompletions) _pendingFrameCompletions = [NSMutableArray array];
+        [_pendingFrameCompletions addObject:[completion copy]];
+    }
+}
+
+- (NSError *)lastFrameError {
+    return _lastSubmittedCommandBuffer.error;
 }
 
 - (float)readPixel:(vector_float2)position {

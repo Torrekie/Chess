@@ -48,6 +48,10 @@
 @interface MBCBoardView ( Draw )
 
 - (void) drawPosition;				// Draw the whole board and pieces
+- (void) setupPerspective;
+#if TARGET_OS_IOS
+- (void) drawIOSLegalDropTargets;
+#endif
 
 @end
 

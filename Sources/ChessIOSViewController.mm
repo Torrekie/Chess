@@ -1,8 +1,8 @@
 #import "ChessIOSViewController.h"
 
 #import "MBCBoard.h"
-#import "MBCBoardMTLView.h"
-#import "MBCMetalRenderer.h"
+#import "MBCIOSBoardBackend.h"
+#import "MBCIOSRendererPreferences.h"
 #import "MBCIOSChessEngine.h"
 #import "MBCPlayer.h"
 #import "MBCIOSGameStore.h"
@@ -736,19 +736,21 @@ static void MBCIOSFillGamePreferences(NSMutableDictionary *metadata)
     metadata[kMBCSearchTime] = @(MAX(1, MIN(12, [metadata[kMBCSearchTime] integerValue])));
 }
 
-static NSArray<NSString *> *MBCIOSMetalStyleNames(void)
+static NSArray<NSString *> *MBCIOSBoardStyleNames(void)
 {
-    /* These are the styles exposed by the maintained Metal renderer.  The
-     * legacy Grass and Fur resources belong to the OpenGL path and are not
-     * offered by the macOS Metal preferences sheet. */
-    return @[ @"Wood", @"Marble", @"Metal" ];
+    return @[ @"Wood", @"Marble", @"Metal", @"Grass" ];
 }
 
-static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
+static NSArray<NSString *> *MBCIOSPieceStyleNames(void)
 {
-    return @[ MBCIOSLocalizedString(@"Wood", @"Wood"),
-              MBCIOSLocalizedString(@"Marble", @"Marble"),
-              MBCIOSLocalizedString(@"Metal", @"Metal") ];
+    return @[ @"Wood", @"Marble", @"Metal", @"Fur" ];
+}
+
+static NSArray<NSString *> *MBCIOSStyleDisplayNames(NSArray<NSString *> *styles)
+{
+    NSMutableArray *names = [NSMutableArray arrayWithCapacity:styles.count];
+    for (NSString *style in styles) [names addObject:MBCIOSLocalizedString(style, style)];
+    return names;
 }
 
 @interface MBCIOSVoicePickerViewController : UITableViewController <UISearchResultsUpdating>
@@ -870,6 +872,7 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 @property (nonatomic, copy) MBCIOSStylePairSelectionCompletion completion;
 @property (nonatomic, strong, readwrite) UISegmentedControl *boardStyleControl;
 @property (nonatomic, strong, readwrite) UISegmentedControl *pieceStyleControl;
+@property (nonatomic, strong, readwrite) UISegmentedControl *rendererControl;
 @property (nonatomic, strong, readwrite) UISwitch *autoRotateSwitch;
 @property (nonatomic, strong, readwrite) UISwitch *speakMovesSwitch;
 @property (nonatomic, strong, readwrite) UISwitch *speakHumanMovesSwitch;
@@ -935,9 +938,11 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
     self = [super initWithStyle:UITableViewStyleInsetGrouped];
     if (!self) return nil;
 
-    NSArray<NSString *> *styles = MBCIOSMetalStyleNames();
+    NSArray<NSString *> *styles = MBCIOSBoardStyleNames();
     _selectedBoardStyleName = [styles containsObject:boardStyle] ? [boardStyle copy] : [styles firstObject];
+    styles = MBCIOSPieceStyleNames();
     _selectedPieceStyleName = [styles containsObject:pieceStyle] ? [pieceStyle copy] : [styles firstObject];
+    _rendererKind = MBCIOSRendererPreferences.sharedPreferences.desiredRenderer;
     _selectedAutoRotateBoard = autoRotateBoard;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     _selectedSpeakMoves = [defaults objectForKey:kMBCSpeakMoves]
@@ -967,20 +972,25 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
                                                        target:self
                                                        action:@selector(doneAction:)];
 
-    self.boardStyleControl = [[UISegmentedControl alloc] initWithItems:MBCIOSMetalStyleDisplayNames()];
+    self.rendererControl = [[UISegmentedControl alloc] initWithItems:@[@"Metal", @"OpenGL"]];
+    self.rendererControl.accessibilityLabel = NSLocalizedString(@"Renderer", nil);
+    self.rendererControl.accessibilityIdentifier = @"ChessPreferencesRenderer";
+    self.rendererControl.selectedSegmentIndex = self.rendererKind;
+    [self.rendererControl addTarget:self action:@selector(rendererChanged:) forControlEvents:UIControlEventValueChanged];
+    self.boardStyleControl = [[UISegmentedControl alloc] initWithItems:MBCIOSStyleDisplayNames(MBCIOSBoardStyleNames())];
     self.boardStyleControl.accessibilityLabel = MBCIOSLocalizedString(@"ios_board_style", @"Board");
     self.boardStyleControl.accessibilityIdentifier = @"ChessPreferencesBoardStyle";
     self.boardStyleControl.selectedSegmentIndex =
-        [MBCIOSMetalStyleNames() indexOfObject:self.selectedBoardStyleName];
+        [MBCIOSBoardStyleNames() indexOfObject:self.selectedBoardStyleName];
     [self.boardStyleControl addTarget:self
                           action:@selector(styleChanged:)
                 forControlEvents:UIControlEventValueChanged];
 
-    self.pieceStyleControl = [[UISegmentedControl alloc] initWithItems:MBCIOSMetalStyleDisplayNames()];
+    self.pieceStyleControl = [[UISegmentedControl alloc] initWithItems:MBCIOSStyleDisplayNames(MBCIOSPieceStyleNames())];
     self.pieceStyleControl.accessibilityLabel = MBCIOSLocalizedString(@"ios_piece_style", @"Pieces");
     self.pieceStyleControl.accessibilityIdentifier = @"ChessPreferencesPieceStyle";
     self.pieceStyleControl.selectedSegmentIndex =
-        [MBCIOSMetalStyleNames() indexOfObject:self.selectedPieceStyleName];
+        [MBCIOSPieceStyleNames() indexOfObject:self.selectedPieceStyleName];
     [self.pieceStyleControl addTarget:self action:@selector(pieceStyleChanged:)
                      forControlEvents:UIControlEventValueChanged];
 
@@ -1014,6 +1024,7 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
     self.alternateVoiceButton = [self voiceButtonWithTitle:MBCIOSLocalizedString(@"ios_alternate_voice", @"Alternate Voice")
                                                     identifier:self.selectedAlternateVoiceIdentifier
                                                         action:@selector(selectAlternateVoice:)];
+    [self rendererChanged:self.rendererControl];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -1033,7 +1044,21 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
     (void)tableView;
-    return section == 0 ? 2 : section == 1 ? 4 : 1;
+    return section == 0 ? 3 : section == 1 ? 4 : 1;
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
+{
+    (void)tableView;
+    return section == 0 ? NSLocalizedString(@"Renderer applies to all windows. Grass boards and Fur pieces use Wood with Metal.", nil) : nil;
+}
+
+- (void)rendererChanged:(UISegmentedControl *)sender
+{
+    self.rendererKind = sender.selectedSegmentIndex == 1 ? MBCIOSRendererOpenGL : MBCIOSRendererMetal;
+    BOOL legacy = self.rendererKind == MBCIOSRendererOpenGL;
+    [self.boardStyleControl setEnabled:legacy forSegmentAtIndex:3];
+    [self.pieceStyleControl setEnabled:legacy forSegmentAtIndex:3];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView
@@ -1070,7 +1095,14 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
         return cell;
     }
     if (indexPath.section == 0) {
-        BOOL boardStyle = indexPath.row == 0;
+        if (indexPath.row == 0) {
+            UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+            cell.textLabel.text = NSLocalizedString(@"Renderer", nil);
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cell.accessoryView = self.rendererControl;
+            return cell;
+        }
+        BOOL boardStyle = indexPath.row == 1;
         NSString *identifier = boardStyle ? @"ChessBoardStyleRow" : @"ChessPieceStyleRow";
         UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:identifier];
         if (!cell) {
@@ -1150,7 +1182,7 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 
 - (void)styleChanged:(UISegmentedControl *)sender
 {
-    NSArray<NSString *> *styles = MBCIOSMetalStyleNames();
+    NSArray<NSString *> *styles = MBCIOSBoardStyleNames();
     NSInteger index = sender.selectedSegmentIndex;
     if (index >= 0 && index < (NSInteger)styles.count) {
         self.selectedBoardStyleName = styles[index];
@@ -1159,7 +1191,7 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 
 - (void)pieceStyleChanged:(UISegmentedControl *)sender
 {
-    NSArray<NSString *> *styles = MBCIOSMetalStyleNames();
+    NSArray<NSString *> *styles = MBCIOSPieceStyleNames();
     NSInteger index = sender.selectedSegmentIndex;
     if (index >= 0 && index < (NSInteger)styles.count) {
         self.selectedPieceStyleName = styles[index];
@@ -1282,6 +1314,9 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 - (void)commitSelection
 {
     if (self.finished) return;
+    if (self.rendererControl) [self rendererChanged:self.rendererControl];
+    if (self.rendererCompletion && !self.rendererCompletion(self.rendererKind)) return;
+    self.rendererCompletion = nil;
     /* Keep programmatic and touch-driven selection paths identical. UIKit
      * sends ValueChanged for a tap, while state restoration
      * may set the selected segment directly. */
@@ -1320,6 +1355,7 @@ static NSArray<NSString *> *MBCIOSMetalStyleDisplayNames(void)
 {
     if (self.finished) return;
     self.finished = YES;
+    self.rendererCompletion = nil;
     MBCIOSStylePairSelectionCompletion completion = self.completion;
     self.completion = nil;
     if (completion) completion(NO, nil, nil, self.selectedAutoRotateBoard);
@@ -1541,7 +1577,18 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 @end
 
-@interface ChessIOSViewController ()
+@interface ChessIOSViewController () <MBCIOSRendererParticipant>
+@property (nonatomic, strong) MBCIOSBoardBackend *boardBackend;
+@property (nonatomic, strong) MBCIOSBoardBackend *preparedBoardBackend;
+@property (nonatomic, strong) MBCIOSBoardBackend *stagedBoardBackend;
+@property (nonatomic) MBCIOSRendererKind requestedRenderer;
+@property (nonatomic) NSUInteger rendererRevision;
+@property (nonatomic) BOOL rendererChangePending;
+@property (nonatomic) BOOL rendererChanging;
+@property (nonatomic) BOOL recordingTransitioning;
+@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *boardViewConstraints;
+- (void)applyPendingRendererChange;
+- (void)installBoardView:(UIView<MBCIOSBoardPresentation> *)view;
 @property (nonatomic, strong) MBCIOSBoardChromeView *actionToolbar;
 @property (nonatomic, strong) UIStackView *actionButtonStack;
 @property (nonatomic, copy) NSArray<UIButton *> *actionButtons;
@@ -1740,6 +1787,168 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 @synthesize boardOnly = _boardOnly;
 
+- (void)setPreparedBoardBackend:(MBCIOSBoardBackend *)prepared
+{
+    if (_preparedBoardBackend == prepared) return;
+    MBCIOSBoardBackend *previous = _preparedBoardBackend;
+    _preparedBoardBackend = prepared;
+    /* A staged first frame retains its owner until its completion handler.
+     * Other discarded candidates must retire before their last reference is
+     * dropped, including when an inactive scene receives a newer preference. */
+    if (previous && previous != _boardBackend && previous != _stagedBoardBackend)
+        [previous retireWithCompletion:nil];
+}
+
+- (BOOL)rendererSceneIsForeground
+{
+    UIWindowScene *scene = self.viewIfLoaded.window.windowScene;
+    return scene && scene.activationState == UISceneActivationStateForegroundActive &&
+        UIApplication.sharedApplication.applicationState != UIApplicationStateBackground;
+}
+
+- (MBCIOSBoardBackend *)prepareRenderer:(MBCIOSRendererKind)kind error:(NSError **)error
+{
+    if (self.boardBackend.kind == kind) return self.boardBackend;
+    CGRect frame = self.boardView ? self.boardView.frame : self.viewIfLoaded.bounds;
+    return [MBCIOSBoardBackend backendWithKind:kind frame:frame board:self.board
+        variant:self.variant side:self.side boardStyle:self.boardStyle ?: @"Wood"
+        pieceStyle:self.pieceStyle ?: @"Wood" error:error];
+}
+
+- (void)requestRenderer:(MBCIOSRendererKind)kind revision:(NSUInteger)revision
+              prepared:(MBCIOSBoardBackend *)prepared
+{
+    if (revision < self.rendererRevision) return;
+    self.rendererRevision = revision;
+    self.requestedRenderer = kind;
+    self.rendererChangePending = self.boardBackend.kind != kind || self.rendererChanging;
+    self.preparedBoardBackend = prepared == self.boardBackend ? nil : prepared;
+    __weak ChessIOSViewController *weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{ [weakSelf applyPendingRendererChange]; });
+}
+
+- (void)installBoardView:(UIView<MBCIOSBoardPresentation> *)view
+{
+    UIView<MBCIOSBoardPresentation> *oldView = self.boardView;
+    [NSLayoutConstraint deactivateConstraints:self.boardViewConstraints ?: @[]];
+    [self.view insertSubview:view atIndex:0];
+    self.boardViewConstraints = @[
+        [view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ];
+    [NSLayoutConstraint activateConstraints:self.boardViewConstraints];
+    self.boardView = view;
+    if (oldView != view) [oldView removeFromSuperview];
+}
+
+- (void)applyPendingRendererChange
+{
+    if (!self.rendererChangePending || self.rendererChanging || ![self rendererSceneIsForeground]) return;
+    if (self.activeMoveAnimation || self.boardTurnAnimationDisplayLink ||
+        [self.boardView isOrientationTransitioning] || [self.boardView iosHasActiveInteraction] ||
+        self.recordingController.isRecording || self.recordingTransitioning) return;
+    for (ChessIOSViewController *controller in MBCIOSLiveGameControllers().allObjects)
+        if (controller.recordingController.isRecording || controller.recordingTransitioning) return;
+    if (self.boardBackend.kind == self.requestedRenderer) {
+        self.rendererChangePending = NO;
+        self.preparedBoardBackend = nil;
+        return;
+    }
+    NSUInteger revision = self.rendererRevision;
+    MBCBoard *board = self.board;
+    MBCIOSBoardBackend *previous = self.boardBackend;
+    NSDictionary *state = [self.boardView iosCapturePresentationState];
+    NSError *error = nil;
+    MBCIOSBoardBackend *next = self.preparedBoardBackend ?: [self prepareRenderer:self.requestedRenderer error:&error];
+    if (!next) {
+        self.rendererChangePending = NO;
+        if (error) [self showDocumentError:error];
+        return;
+    }
+    self.stagedBoardBackend = next;
+    self.rendererChanging = YES;
+    [self.boardView wantMouse:NO];
+    self.boardView.userInteractionEnabled = NO;
+    [previous setRenderingActive:NO];
+    [next.view setBoard:board];
+    [next.view startGame:self.variant playing:self.side];
+    [next.view setStyleForBoard:self.boardStyle pieces:self.pieceStyle];
+    [next.view iosRestorePresentationState:state];
+    next.view.frame = self.boardView.frame;
+    [self.view insertSubview:next.view aboveSubview:self.boardView];
+    NSArray<NSLayoutConstraint *> *stagingConstraints = @[
+        [next.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [next.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [next.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [next.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ];
+    [NSLayoutConstraint activateConstraints:stagingConstraints];
+    [self.view layoutIfNeeded];
+    if (![next prepareWithError:&error]) {
+        [NSLayoutConstraint deactivateConstraints:stagingConstraints];
+        [next.view removeFromSuperview];
+        self.rendererChanging = NO;
+        self.stagedBoardBackend = nil;
+        self.rendererChangePending = NO;
+        self.preparedBoardBackend = nil;
+        self.boardView.userInteractionEnabled = YES;
+        [previous setRenderingActive:YES];
+        [self updateLoadedGameState];
+        if (error) [self showDocumentError:error];
+        [self startNextMoveAnimation];
+        return;
+    }
+    __weak ChessIOSViewController *weakSelf = self;
+    [next renderFirstFrameWithCompletion:^(NSError *frameError) {
+        ChessIOSViewController *controller = weakSelf;
+        [NSLayoutConstraint deactivateConstraints:stagingConstraints];
+        BOOL current = controller && controller.board == board &&
+            controller.rendererRevision == revision && [controller rendererSceneIsForeground] &&
+            ![controller.boardView isOrientationTransitioning];
+        if (!current || frameError) {
+            [next.view removeFromSuperview];
+            [next retireWithCompletion:nil];
+            if (!controller) return;
+            controller.rendererChanging = NO;
+            if (controller.preparedBoardBackend == next) controller.preparedBoardBackend = nil;
+            if (controller.stagedBoardBackend == next) controller.stagedBoardBackend = nil;
+            if (frameError && current) controller.rendererChangePending = NO;
+            controller.boardView.userInteractionEnabled = YES;
+            [previous setRenderingActive:[controller rendererSceneIsForeground]];
+            [controller updateLoadedGameState];
+            if (frameError && current) [controller showDocumentError:frameError];
+            if (!frameError) {
+                dispatch_async(dispatch_get_main_queue(), ^{ [controller applyPendingRendererChange]; });
+            }
+            [controller startNextMoveAnimation];
+            return;
+        }
+        /* Toolbar presentation commands can run while a Metal frame finishes.
+         * Carry their latest state into the newly installed view. */
+        [next.view iosRestorePresentationState:[controller.boardView iosCapturePresentationState]];
+        [controller installBoardView:next.view];
+        controller.boardBackend = next;
+        controller.engine.moveSource = next.view;
+        controller.preparedBoardBackend = nil;
+        controller.stagedBoardBackend = nil;
+        controller.rendererChangePending = NO;
+        controller.rendererChanging = NO;
+        next.view.userInteractionEnabled = YES;
+        [controller updateLoadedGameState];
+        [previous retireWithCompletion:nil];
+        UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, next.view);
+        [controller startNextMoveAnimation];
+    }];
+}
+
+- (void)handleRendererInteractionEnded:(NSNotification *)notification
+{
+    if (notification.object != self.boardView) return;
+    [self applyPendingRendererChange];
+}
+
 - (NSString *)activeGameIdentifier
 {
     return self.activeGameRecord.identifier;
@@ -1751,6 +1960,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     @synchronized([ChessIOSViewController class]) {
         [MBCIOSLiveGameControllers() addObject:self];
     }
+    [MBCIOSRendererPreferences.sharedPreferences addParticipant:self];
     NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
     [center addObserver:self selector:@selector(handleApplicationDidBecomeActive:)
                    name:UIApplicationDidBecomeActiveNotification object:nil];
@@ -1767,7 +1977,9 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     [center addObserver:self selector:@selector(storeCameraPreferences:)
                    name:MBCIOSBoardCameraChangedNotification object:nil];
     [center addObserver:self selector:@selector(handleBoardIdleTap:)
-                   name:MBCIOSBoardIdleTapNotification object:self.boardView];
+                   name:MBCIOSBoardIdleTapNotification object:nil];
+    [center addObserver:self selector:@selector(handleRendererInteractionEnded:)
+                   name:MBCIOSBoardInteractionEndedNotification object:nil];
     [center addObserver:self selector:@selector(handleVoiceOverStatusChanged:)
                    name:UIAccessibilityVoiceOverStatusDidChangeNotification object:nil];
     [center addObserver:self selector:@selector(handleContentSizeCategoryChanged:)
@@ -1788,6 +2000,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (void)dealloc
 {
+    [MBCIOSRendererPreferences.sharedPreferences removeParticipant:self];
     @synchronized([ChessIOSViewController class]) {
         [MBCIOSLiveGameControllers() removeObject:self];
     }
@@ -1797,6 +2010,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     [self.speechController stop];
     [self cancelBoardTurnAnimation];
     [self.engine stop];
+    [self.boardBackend retireWithCompletion:nil];
+    [self.preparedBoardBackend retireWithCompletion:nil];
 }
 
 #pragma mark - Game Center bridge
@@ -2720,6 +2935,11 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (void)startNextMoveAnimation
 {
+    if (self.rendererChanging) return;
+    if (self.rendererChangePending && !self.activeMoveAnimation && !self.boardTurnAnimationDisplayLink) {
+        [self applyPendingRendererChange];
+        if (self.rendererChanging) return;
+    }
     if (self.activeMoveAnimation || !self.board || !self.boardView ||
         self.pendingMoveAnimations.count == 0) {
         return;
@@ -2881,6 +3101,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
             [self startNextMoveAnimation];
             [self presentTurnHandoffIfNeeded];
         }
+    } else {
+        [self applyPendingRendererChange];
     }
 }
 
@@ -3064,7 +3286,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 - (BOOL)canUseLocalGameActions
 {
     BOOL turnAvailable = self.players != kHumanVsGameCenter || [self canReceiveLocalInput];
-    return self.board && self.boardView && turnAvailable && !self.awaitingTurnHandoff &&
+    return self.board && self.boardView && turnAvailable && !self.rendererChanging && !self.awaitingTurnHandoff &&
         !self.activeMoveAnimation &&
         !self.boardTurnAnimationDisplayLink && self.pendingMoveAnimations.count == 0 &&
         MBCIOSStoredOutcome(self.board, self.gameMetadata) == kCmdNull;
@@ -3195,7 +3417,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (BOOL)canReceiveLocalInput
 {
-    if (!self.board || self.awaitingTurnHandoff ||
+    if (!self.board || self.rendererChanging || self.awaitingTurnHandoff ||
         MBCIOSStoredOutcome(self.board, self.gameMetadata) != kCmdNull) return NO;
     if (self.players == kHumanVsGameCenter) {
         return [self isCurrentGameCenterMatchActive] &&
@@ -4086,9 +4308,9 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     __weak ChessIOSViewController *weakSelf = self;
     MBCBoard *preferenceBoard = self.board;
     MBCIOSFillGamePreferences(self.gameMetadata);
-    NSString *currentBoardStyle = [MBCIOSMetalStyleNames() containsObject:self.boardStyle]
+    NSString *currentBoardStyle = [MBCIOSBoardStyleNames() containsObject:self.boardStyle]
         ? self.boardStyle : @"Wood";
-    NSString *currentPieceStyle = [MBCIOSMetalStyleNames() containsObject:self.pieceStyle]
+    NSString *currentPieceStyle = [MBCIOSPieceStyleNames() containsObject:self.pieceStyle]
         ? self.pieceStyle : @"Wood";
     BOOL autoRotateBoard = [[NSUserDefaults standardUserDefaults]
                             boolForKey:kMBCAutoRotateBoard];
@@ -4104,6 +4326,18 @@ typedef void (^MBCIOSPanelActionHandler)(void);
         [strongSelf applyAutoRotatePreference:rotateBoard];
         [strongSelf.speechController reloadSettings];
     }];
+    __weak MBCIOSPreferencesViewController *weakPreferences = preferences;
+    preferences.rendererCompletion = ^BOOL(MBCIOSRendererKind kind) {
+        NSError *error = nil;
+        if ([MBCIOSRendererPreferences.sharedPreferences selectRenderer:kind error:&error]) return YES;
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:
+            NSLocalizedString(@"Unable to Change Renderer", nil)
+            message:error.localizedDescription preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:MBCIOSLocalizedString(@"ios_ok", @"OK")
+            style:UIAlertActionStyleDefault handler:nil]];
+        [weakPreferences presentViewController:alert animated:YES completion:nil];
+        return NO;
+    };
     preferences.gameSettings = self.gameMetadata;
     preferences.showsComputerStrength = self.engineSide != kNeitherSide;
     preferences.settingsCompletion = ^(NSDictionary *settings) {
@@ -4142,8 +4376,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (void)applyBoardStyle:(NSString *)boardStyle pieceStyle:(NSString *)pieceStyle
 {
-    NSArray<NSString *> *styles = MBCIOSMetalStyleNames();
-    if (![styles containsObject:boardStyle] || ![styles containsObject:pieceStyle]) return;
+    if (![MBCIOSBoardStyleNames() containsObject:boardStyle] ||
+        ![MBCIOSPieceStyleNames() containsObject:pieceStyle]) return;
     self.boardStyle = boardStyle;
     self.pieceStyle = pieceStyle;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -4469,6 +4703,12 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     if ([notification.object isKindOfClass:[UIScene class]] && self.view.window.windowScene &&
         notification.object != self.view.window.windowScene) return;
+    if (![self rendererSceneIsForeground]) return;
+    [self.boardBackend setRenderingActive:YES];
+    MBCIOSRendererPreferences *preferences = MBCIOSRendererPreferences.sharedPreferences;
+    if (preferences.desiredRenderer != self.boardBackend.kind || preferences.revision > self.rendererRevision)
+        [self requestRenderer:preferences.desiredRenderer revision:preferences.revision prepared:nil];
+    [self applyPendingRendererChange];
     if (self.engineSide != kNeitherSide && !self.engine.isRunning)
         [self restartEngineFromCurrentBoard];
     [self updateIdleTimerForSharedGames];
@@ -4489,6 +4729,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     if ([notification.object isKindOfClass:[UIScene class]] &&
         notification.object != self.view.window.windowScene) return;
+    [self.boardBackend setRenderingActive:NO];
     if (self.engine.isRunning) {
         [self.engine stop];
         [self updateLoadedGameState];
@@ -4511,6 +4752,13 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     [self becomeFirstResponder];
     if (self.view.window.isKeyWindow) [self.gameCenterManager becomePreferredEventTarget];
     self.hasAppearedOnScreen = YES;
+    if ([self rendererSceneIsForeground]) {
+        [self.boardBackend setRenderingActive:YES];
+        MBCIOSRendererPreferences *preferences = MBCIOSRendererPreferences.sharedPreferences;
+        if (preferences.desiredRenderer != self.boardBackend.kind || preferences.revision > self.rendererRevision)
+            [self requestRenderer:preferences.desiredRenderer revision:preferences.revision prepared:nil];
+        [self applyPendingRendererChange];
+    }
     if (self.engineSide != kNeitherSide && !self.engine.isRunning)
         [self restartEngineFromCurrentBoard];
     [self updateIdleTimerForSharedGames];
@@ -5053,13 +5301,18 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (void)toggleRecordingAction:(UIButton *)sender
 {
+    if (self.recordingTransitioning || self.rendererChanging) return;
     if (self.recordingController.isRecording) {
+        self.recordingTransitioning = YES;
         sender.enabled = NO;
         __weak ChessIOSViewController *weakSelf = self;
         [self.recordingController stopRecordingWithCompletionHandler:^(NSError *error) {
             ChessIOSViewController *strongSelf = weakSelf;
             if (!strongSelf) return;
+            strongSelf.recordingTransitioning = NO;
             [strongSelf updateRecordingButtonForActive:NO];
+            for (ChessIOSViewController *controller in MBCIOSLiveGameControllers().allObjects)
+                [controller applyPendingRendererChange];
             if (error) {
                 [strongSelf showDocumentError:error];
                 return;
@@ -5096,17 +5349,24 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
     __weak ChessIOSViewController *weakSelf = self;
     sender.enabled = NO;
+    self.recordingTransitioning = YES;
     self.recordingController.failureHandler = ^(NSError *error) {
         ChessIOSViewController *strongSelf = weakSelf;
         if (!strongSelf) return;
+        strongSelf.recordingTransitioning = NO;
         [strongSelf updateRecordingButtonForActive:NO];
+        for (ChessIOSViewController *controller in MBCIOSLiveGameControllers().allObjects)
+            [controller applyPendingRendererChange];
         [strongSelf showDocumentError:error];
     };
     [self.recordingController startRecordingToURL:url completionHandler:^(NSError *error) {
         ChessIOSViewController *strongSelf = weakSelf;
         if (!strongSelf) return;
+        strongSelf.recordingTransitioning = NO;
         if (error) {
             [strongSelf updateRecordingButtonForActive:NO];
+            for (ChessIOSViewController *controller in MBCIOSLiveGameControllers().allObjects)
+                [controller applyPendingRendererChange];
             [strongSelf showDocumentError:error];
             return;
         }
@@ -5164,33 +5424,6 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     if (!self.gameCenterManager) self.gameCenterManager = [[MBCIOSGameCenterManager alloc] init];
     self.gameCenterManager.delegate = self;
-    id<MTLDevice> device = MBCMetalRenderer.defaultMTLDevice;
-    if (!device) {
-        UIView *fallback = [[UIView alloc] initWithFrame:CGRectZero];
-        fallback.backgroundColor = UIColor.blackColor;
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectZero];
-        label.text = MBCIOSLocalizedString(@"ios_metal_unavailable", @"Metal is unavailable on this device");
-        label.textColor = UIColor.whiteColor;
-        label.textAlignment = NSTextAlignmentCenter;
-        label.translatesAutoresizingMaskIntoConstraints = NO;
-        [fallback addSubview:label];
-        [NSLayoutConstraint activateConstraints:@[
-            [label.leadingAnchor constraintEqualToAnchor:fallback.leadingAnchor constant:16.0],
-            [label.trailingAnchor constraintEqualToAnchor:fallback.trailingAnchor constant:-16.0],
-            [label.centerYAnchor constraintEqualToAnchor:fallback.centerYAnchor]
-        ]];
-        self.view = fallback;
-        return;
-    }
-
-    // Give MTKView a real drawable size before the renderer creates textures.
-    // The view is resized again by UIKit during layout.
-    MBCBoardMTLView *view = [[MBCBoardMTLView alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    view.device = device;
-    view.paused = YES;
-    view.enableSetNeedsDisplay = YES;
-    view.translatesAutoresizingMaskIntoConstraints = NO;
-
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     self.variant = kVarNormal;
     self.players = (MBCPlayers)[defaults integerForKey:kMBCNewGamePlayers];
@@ -5266,26 +5499,44 @@ typedef void (^MBCIOSPanelActionHandler)(void);
         self.board = [[MBCBoard alloc] init];
         [self.board startGame:self.variant];
     }
-    [view setBoard:self.board];
-    [view startGame:self.variant playing:self.side];
-
-    self.renderer = [[MBCMetalRenderer alloc] initWithDevice:device mtkView:view];
-    view.renderer = self.renderer;
-    [self.renderer drawableSizeWillChange:view.drawableSize];
-    [view setStyleForBoard:self.boardStyle pieces:self.pieceStyle];
-    view.delegate = self;
+    MBCIOSRendererPreferences *rendererPreferences = MBCIOSRendererPreferences.sharedPreferences;
+    self.requestedRenderer = rendererPreferences.desiredRenderer;
+    self.rendererRevision = rendererPreferences.revision;
+    NSError *rendererError = nil;
+    self.boardBackend = [MBCIOSBoardBackend backendWithKind:self.requestedRenderer
+        frame:UIScreen.mainScreen.bounds board:self.board variant:self.variant side:self.side
+        boardStyle:self.boardStyle pieceStyle:self.pieceStyle error:&rendererError];
+    if (!self.boardBackend) {
+        MBCIOSRendererKind fallback = self.requestedRenderer == MBCIOSRendererMetal
+            ? MBCIOSRendererOpenGL : MBCIOSRendererMetal;
+        self.boardBackend = [MBCIOSBoardBackend backendWithKind:fallback
+            frame:UIScreen.mainScreen.bounds board:self.board variant:self.variant side:self.side
+            boardStyle:self.boardStyle pieceStyle:self.pieceStyle error:&rendererError];
+    }
+    if (!self.boardBackend) {
+        UILabel *errorView = [[UILabel alloc] initWithFrame:UIScreen.mainScreen.bounds];
+        errorView.backgroundColor = UIColor.blackColor;
+        errorView.textColor = UIColor.whiteColor;
+        errorView.textAlignment = NSTextAlignmentCenter;
+        errorView.numberOfLines = 0;
+        errorView.text = rendererError.localizedDescription;
+        self.view = errorView;
+        return;
+    }
+    UIView<MBCIOSBoardPresentation> *view = self.boardBackend.view;
+    view.userInteractionEnabled = YES;
 
     UIView *container = [[UIView alloc] initWithFrame:UIScreen.mainScreen.bounds];
     container.backgroundColor = UIColor.blackColor;
     [container addSubview:view];
-    // The board is the window's canvas. Status-bar and home-indicator changes
-    // affect only the safe-area overlays, never the Metal drawable or camera.
-    [NSLayoutConstraint activateConstraints:@[
+    // The board fills the canvas; controls follow the safe area.
+    self.boardViewConstraints = @[
         [view.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
         [view.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
         [view.topAnchor constraintEqualToAnchor:container.topAnchor],
         [view.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]
-    ]];
+    ];
+    [NSLayoutConstraint activateConstraints:self.boardViewConstraints];
 
     [self installActionToolbarInContainer:container];
     [self installMoveHistorySurfacesInContainer:container];
@@ -5421,14 +5672,15 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     (void)size;
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
-    if (!self.boardView || !self.renderer) return;
+    if (!self.boardView) return;
     [self.boardView beginOrientationTransition];
     void (^finishTransition)(id<UIViewControllerTransitionCoordinatorContext>) =
     ^(id<UIViewControllerTransitionCoordinatorContext> context) {
         (void)context;
         [self.boardView endOrientationTransition];
-        [self.renderer drawableSizeWillChange:self.boardView.drawableSize];
+        [self.boardBackend prepareWithError:nil];
         [self.boardView drawNow];
+        [self applyPendingRendererChange];
     };
     if (coordinator) {
         [coordinator animateAlongsideTransition:nil completion:finishTransition];
@@ -5640,21 +5892,6 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     self.notifiedLibraryConflictIdentifier = nil;
     self.nextLibraryGameName = nil;
     return YES;
-}
-
-- (void)mtkView:(MTKView *)view drawableSizeWillChange:(CGSize)size
-{
-    (void)view;
-    if (self.boardView.isOrientationTransitioning) {
-        return;
-    }
-    [self.renderer drawableSizeWillChange:size];
-}
-
-- (void)drawInMTKView:(MTKView *)view
-{
-    (void)view;
-    [self.boardView drawMetalContent];
 }
 
 @end

@@ -1,13 +1,11 @@
 #import <UIKit/UIKit.h>
-#import <MetalKit/MetalKit.h>
+#import "MBCIOSBoardPresentation.h"
 
 #import "MBCIOSDocumentController.h"
 #import "MBCIOSRecordingController.h"
 #import "MBCIOSGameCenterManager.h"
 
 @class MBCBoard;
-@class MBCBoardMTLView;
-@class MBCMetalRenderer;
 
 typedef void (^MBCIOSStyleSelectionCompletion)(BOOL confirmed,
                                                NSString * _Nullable styleName,
@@ -22,6 +20,9 @@ typedef void (^MBCIOSStylePairSelectionCompletion)(BOOL confirmed,
 @property (nonatomic, copy) void (^settingsCompletion)(NSDictionary *settings);
 @property (nonatomic, strong, readonly) UISegmentedControl *boardStyleControl;
 @property (nonatomic, strong, readonly) UISegmentedControl *pieceStyleControl;
+@property (nonatomic, strong, readonly) UISegmentedControl *rendererControl;
+@property (nonatomic) MBCIOSRendererKind rendererKind;
+@property (nonatomic, copy) BOOL (^rendererCompletion)(MBCIOSRendererKind kind);
 @property (nonatomic, strong, readonly) UISwitch *autoRotateSwitch;
 @property (nonatomic, strong, readonly) UISwitch *speakMovesSwitch;
 @property (nonatomic, strong, readonly) UISwitch *speakHumanMovesSwitch;
@@ -39,10 +40,9 @@ typedef void (^MBCIOSStylePairSelectionCompletion)(BOOL confirmed,
 - (void)cancelSelection;
 @end
 
-@interface ChessIOSViewController : UIViewController <MTKViewDelegate, MBCIOSGameCenterManagerDelegate>
+@interface ChessIOSViewController : UIViewController <MBCIOSGameCenterManagerDelegate>
 @property (nonatomic, strong) MBCBoard *board;
-@property (nonatomic, strong) MBCBoardMTLView *boardView;
-@property (nonatomic, strong) MBCMetalRenderer *renderer;
+@property (nonatomic, strong) UIView<MBCIOSBoardPresentation> *boardView;
 @property (nonatomic, strong) MBCIOSDocumentController *documentController;
 @property (nonatomic, strong) MBCIOSRecordingController *recordingController;
 @property (nonatomic, strong, readonly) MBCIOSGameCenterManager *gameCenterManager;

@@ -53,6 +53,9 @@
 #import <UIKit/UIKit.h>
 #endif
 #import <MetalKit/MetalKit.h>
+#if TARGET_OS_IOS
+#import "MBCIOSBoardPresentation.h"
+#endif
 
 #if TARGET_OS_IOS
 extern NSString * const MBCIOSBoardIdleTapNotification;
@@ -79,7 +82,11 @@ const float kBorderLabelX = 44.25f;
 const float kBorderLabelCenterX = kBorderLabelX + kBorderLabelSize * 0.5f;
 const float kBorderLabelCenterZ = kBorderLabelCenterX;
 
-@interface MBCBoardMTLView : MTKView <MBCBoardViewInterface> {
+@interface MBCBoardMTLView : MTKView <MBCBoardViewInterface
+#if TARGET_OS_IOS
+, MBCIOSBoardPresentation
+#endif
+> {
     /*!
      @abstract Reference to the MBCBoard instance for game
      */
@@ -171,6 +178,7 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
     BOOL _inBoardManipulation;
 
 #if TARGET_OS_IOS
+    BOOL _iosRenderingActive;
     /*! Distinguish a deliberate stationary background tap from a camera drag. */
     CGPoint _boardManipulationStartPoint;
     BOOL _boardManipulationDidMove;

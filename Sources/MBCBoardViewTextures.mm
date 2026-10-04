@@ -53,9 +53,11 @@
 
 #import <stdlib.h> 
 #import <string.h>
-#import <OpenGL/glu.h>
-#import <OpenGL/glext.h>
+#import <ImageIO/ImageIO.h>
+#import "MBCOpenGL.h"
+#if TARGET_OS_OSX
 #import <GLUT/glut.h>
+#endif
 
 GLuint generate_texture(NSString * name, float anisotropy)
 {
@@ -93,7 +95,16 @@ GLuint generate_texture(NSString * name, float anisotropy)
     if (anisotropy)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
     
+#if TARGET_OS_IOS
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, (GLsizei)width, (GLsizei)height,
+                 0, GL_ALPHA, GL_UNSIGNED_BYTE, data);
+    if (glGetError() != GL_NO_ERROR) {
+        glDeleteTextures(1, &texture_name);
+        texture_name = 0;
+    }
+#else
     gluBuild2DMipmaps(GL_TEXTURE_2D, GL_ALPHA, width, height, GL_ALPHA,  GL_UNSIGNED_BYTE, data);
+#endif
     
     free(data);
     
@@ -109,19 +120,32 @@ NSURL * texture_url(NSString * name, NSString * dir)
         path    = [[NSBundle mainBundle] pathForResource:name 
                                                   ofType:@"png" 
                                              inDirectory:dir];
+#if TARGET_OS_IOS
+   return path ? [NSURL fileURLWithPath:path] : nil;
+#else
    return [NSURL fileURLWithPath:path];
+#endif
 }
 
 GLuint load_texture(NSString * name, NSString * dir, float anisotropy, bool blendX)
 {
     NSURL * 			url 	= texture_url(name, dir);
+#if TARGET_OS_IOS
+    if (!url) return 0;
+#endif
     CGImageSourceRef imgSrc 	= CGImageSourceCreateWithURL((CFURLRef)url, NULL);
+#if TARGET_OS_IOS
+    if (!imgSrc) return 0;
+#endif
     CGImageRef 		img	 	= CGImageSourceCreateImageAtIndex(imgSrc, 0, NULL);
+#if TARGET_OS_IOS
+    if (!img) { CFRelease(imgSrc); return 0; }
+#endif
     GLuint			texture_name;
     size_t 			width  	= CGImageGetWidth(img);
     size_t			dWidth	= width*4;
     size_t 			height 	= CGImageGetHeight(img);
-    CGRect 			rect 	= {{0, 0}, {width, height}};
+    CGRect 			rect 	= CGRectMake(0, 0, (CGFloat)width, (CGFloat)height);
     void * 			data 	= calloc(dWidth, height);
     CGColorSpaceRef space 	= CGColorSpaceCreateDeviceRGB();
     CGContextRef 	bitmap 	= 
@@ -161,7 +185,16 @@ GLuint load_texture(NSString * name, NSString * dir, float anisotropy, bool blen
     if (anisotropy)
        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
 
+#if TARGET_OS_IOS
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)width, (GLsizei)height,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+    if (glGetError() != GL_NO_ERROR) {
+        glDeleteTextures(1, &texture_name);
+        texture_name = 0;
+    }
+#else
     gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA8, width, height, GL_BGRA_EXT,  GL_UNSIGNED_INT_8_8_8_8_REV, data);
+#endif
 
     free(data);
 
@@ -301,8 +334,13 @@ GLuint load_texture(NSString * name, NSString * dir, float anisotropy, bool blen
 
 - (void) loadStaticTextures
 {
+#if TARGET_OS_IPHONE
+    NSString *selectionTextureDirectory = @"Textures";
+#else
+    NSString *selectionTextureDirectory = nil;
+#endif
     [fSelectedPieceDrawStyle initWithTexture:
-		    load_texture(@"selected_piece_texture", nil, fAnisotropy, true)];
+		    load_texture(@"selected_piece_texture", selectionTextureDirectory, fAnisotropy, true)];
 	fSelectedPieceDrawStyle->fAlpha	= 0.8f;
 
     for (char i = '1'; i <= '8'; ++i) 

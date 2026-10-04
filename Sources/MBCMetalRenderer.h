@@ -156,6 +156,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)loadMaterialsForBoardStyle:(NSString *)boardStyle
                            pieces:(NSString *)pieceStyle;
 
+/* Complete on the main queue after all submitted frames have retired. */
+- (void)completePendingFramesWithCompletion:(void (^)(void))completion;
+@property (nonatomic, readonly, nullable) NSError *lastFrameError;
+
 @end
 
 NS_ASSUME_NONNULL_END
