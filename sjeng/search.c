@@ -26,33 +26,33 @@
 #include "protos.h"
 #include "limits.h"
 
-uint32_t FH, FHF;
-uint32_t razor_drop, razor_material, drop_cuts, ext_recap, ext_onerep, ext_check;
+SJENG_THREAD_LOCAL uint32_t FH, FHF;
+SJENG_THREAD_LOCAL uint32_t razor_drop, razor_material, drop_cuts, ext_recap, ext_onerep, ext_check;
 
-char true_i_depth;
+SJENG_THREAD_LOCAL char true_i_depth;
 
-int bestmovenum;
+SJENG_THREAD_LOCAL int bestmovenum;
 
-int ugly_ep_hack;
+SJENG_THREAD_LOCAL int ugly_ep_hack;
 
-char postpv[STR_BUFF];
+SJENG_THREAD_LOCAL char postpv[STR_BUFF];
 
-char searching_move[20];
-int moveleft;
-int movetotal;
+SJENG_THREAD_LOCAL char searching_move[20];
+SJENG_THREAD_LOCAL int moveleft;
+SJENG_THREAD_LOCAL int movetotal;
 
-int legals;
+SJENG_THREAD_LOCAL int legals;
 
-int failed;
-int extendedtime;
+SJENG_THREAD_LOCAL int failed;
+SJENG_THREAD_LOCAL int extendedtime;
 
-int tradefreely;
+SJENG_THREAD_LOCAL int tradefreely;
 
-int s_threat;
+SJENG_THREAD_LOCAL int s_threat;
 
-uint32_t rootnodecount[MOVE_BUFF];
+SJENG_THREAD_LOCAL uint32_t rootnodecount[MOVE_BUFF];
 
-bool checks[PV_BUFF];
+SJENG_THREAD_LOCAL bool checks[PV_BUFF];
 
 #define KINGCAP 50000
 #define NONE    0

@@ -26,16 +26,16 @@
 #include "protos.h"
 #include "squares.h"
 
-int Material;
-int std_material[] = { 0, 100, -100, 310, -310, 4000, -4000, 500, -500, 900, -900, 325, -325, 0 }; 
+SJENG_THREAD_LOCAL int Material;
+SJENG_THREAD_LOCAL int std_material[] = { 0, 100, -100, 310, -310, 4000, -4000, 500, -500, 900, -900, 325, -325, 0 };
 
-int zh_material[] = { 0, 100, -100, 210, -210, 4000, -4000, 250, -250, 450, -450, 230, -230, 0 }; 
+SJENG_THREAD_LOCAL int zh_material[] = { 0, 100, -100, 210, -210, 4000, -4000, 250, -250, 450, -450, 230, -230, 0 };
 
-int suicide_material[] = { 0, 15, -15, 150, -150, 500, -500, 150, -150, 50, -50, 0, 0, 0 };
+SJENG_THREAD_LOCAL int suicide_material[] = { 0, 15, -15, 150, -150, 500, -500, 150, -150, 50, -50, 0, 0, 0 };
 
-int losers_material[] = { 0, 80, -80, 320, -320, 1000, -1000, 350, -350, 400, -400, 270, -270, 0 }; 
+SJENG_THREAD_LOCAL int losers_material[] = { 0, 80, -80, 320, -320, 1000, -1000, 350, -350, 400, -400, 270, -270, 0 };
 
-int material[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; 
+SJENG_THREAD_LOCAL int material[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 const int file[144] =
 {
@@ -287,28 +287,28 @@ const int white_rook[144] =
 /* tropism values of 0 and 8 are bogus, 
    and should never happen in the actual eval */
 
-int pre_p_tropism[9] = 
+SJENG_THREAD_LOCAL int pre_p_tropism[9] =
 { 9999, 40, 20, 10, 3, 1, 1, 0, 9999};
 
-int pre_r_tropism[9] = 
+SJENG_THREAD_LOCAL int pre_r_tropism[9] =
 { 9999, 50, 40, 15, 5, 1, 1, 0, 9999};
 
-int pre_n_tropism[9] =
+SJENG_THREAD_LOCAL int pre_n_tropism[9] =
 { 9999, 50, 70, 35, 10, 2, 1, 0, 9999};
 
-int pre_q_tropism[9] =
+SJENG_THREAD_LOCAL int pre_q_tropism[9] =
 { 9999, 100, 60, 20, 5, 2, 0, 0, 9999};
 
-int pre_b_tropism[9] =
+SJENG_THREAD_LOCAL int pre_b_tropism[9] =
 { 9999, 50, 25, 15, 5, 2, 2, 2, 9999};
 
-unsigned char p_tropism[144][144];
-unsigned char q_tropism[144][144];
-unsigned char n_tropism[144][144];
-unsigned char r_tropism[144][144];
-unsigned char b_tropism[144][144];
+SJENG_THREAD_LOCAL unsigned char p_tropism[144][144];
+SJENG_THREAD_LOCAL unsigned char q_tropism[144][144];
+SJENG_THREAD_LOCAL unsigned char n_tropism[144][144];
+SJENG_THREAD_LOCAL unsigned char r_tropism[144][144];
+SJENG_THREAD_LOCAL unsigned char b_tropism[144][144];
 
-int ksafety_scaled[15][9] =
+SJENG_THREAD_LOCAL int ksafety_scaled[15][9] =
 { 
   {  -5,   5,  10,  15,  50,  80, 150, 150, 150 },   /* nothing */
   {  -5,  15,  20,  25,  70, 150, 200, 200, 200 },   /* 1 pawns */

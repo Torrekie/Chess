@@ -26,26 +26,26 @@
 #include "extvars.h"
 #include "config.h"
 
-FILE *rcfile;
-char line[STR_BUFF];
+SJENG_THREAD_LOCAL FILE *rcfile;
+SJENG_THREAD_LOCAL char line[STR_BUFF];
 
-int TTSize;
-int ECacheSize;
-int PBSize;
+SJENG_THREAD_LOCAL int TTSize;
+SJENG_THREAD_LOCAL int ECacheSize;
+SJENG_THREAD_LOCAL int PBSize;
 
-int cfg_booklearn;
-int cfg_razordrop;
-int cfg_cutdrop;
-int cfg_ksafety[15][9];
-int cfg_tropism[5][7];
-int havercfile;
-int cfg_futprune;
-int cfg_devscale;
-int cfg_onerep;
-int cfg_recap;
-int cfg_smarteval;
-int cfg_attackeval;
-float cfg_scalefac;
+SJENG_THREAD_LOCAL int cfg_booklearn;
+SJENG_THREAD_LOCAL int cfg_razordrop;
+SJENG_THREAD_LOCAL int cfg_cutdrop;
+SJENG_THREAD_LOCAL int cfg_ksafety[15][9];
+SJENG_THREAD_LOCAL int cfg_tropism[5][7];
+SJENG_THREAD_LOCAL int havercfile;
+SJENG_THREAD_LOCAL int cfg_futprune;
+SJENG_THREAD_LOCAL int cfg_devscale;
+SJENG_THREAD_LOCAL int cfg_onerep;
+SJENG_THREAD_LOCAL int cfg_recap;
+SJENG_THREAD_LOCAL int cfg_smarteval;
+SJENG_THREAD_LOCAL int cfg_attackeval;
+SJENG_THREAD_LOCAL float cfg_scalefac;
 
 void read_rcfile (void) 
 {

@@ -41,23 +41,23 @@
 /* define this to use the pn^2 search */
 #undef PN2
 
-int nodecount;
-int nodecount2;
-int pn2;
-int32_t frees;
-int iters;
-int forwards;
-int maxply;
-int ply;
-int pn_time;
-move_s pn_move;
-move_s pn_saver;
+SJENG_THREAD_LOCAL int nodecount;
+SJENG_THREAD_LOCAL int nodecount2;
+SJENG_THREAD_LOCAL int pn2;
+SJENG_THREAD_LOCAL int32_t frees;
+SJENG_THREAD_LOCAL int iters;
+SJENG_THREAD_LOCAL int forwards;
+SJENG_THREAD_LOCAL int maxply;
+SJENG_THREAD_LOCAL int ply;
+SJENG_THREAD_LOCAL int pn_time;
+SJENG_THREAD_LOCAL move_s pn_move;
+SJENG_THREAD_LOCAL move_s pn_saver;
 
-bool kibitzed;
-int forcedwin;
+SJENG_THREAD_LOCAL bool kibitzed;
+SJENG_THREAD_LOCAL int forcedwin;
 
-int rootlosers[PV_BUFF];
-int alllosers;
+SJENG_THREAD_LOCAL int rootlosers[PV_BUFF];
+SJENG_THREAD_LOCAL int alllosers;
 
 typedef struct node
   {
@@ -78,8 +78,8 @@ void suicide_pn_eval (node_t *this);
 void std_pn_eval (node_t *this);
 void losers_pn_eval (node_t *this);
 
-unsigned char *membuff;
-int bufftop = 0;
+SJENG_THREAD_LOCAL unsigned char *membuff;
+SJENG_THREAD_LOCAL int bufftop = 0;
 
 void* Xmalloc(int size)
 {

@@ -1,0 +1,80 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1024" height="1024" viewBox="0 0 400 400" version="1.1" color-interpolation="sRGB" role="img" aria-labelledby="title description">
+  <title id="title">Chess — iOS 14–17 · Honey / Graphite · Revision 2</title>
+  <desc id="description">Independent mobile Chess concept based on the supplied macOS knight and diagonal-board composition. Saturated honey-to-amber color, broad graphic color planes, cool porcelain board and blue-black graphite. Layered vector paths and standard linear gradients only. No embedded bitmap, no fonts, no filters, no glass, no specular bevel and no cast shadow. Opaque square master. The platform should supply its own outer icon mask.</desc>
+  <defs>
+    <clipPath id="knight-body-boundary" clipPathUnits="userSpaceOnUse">
+      <path d="M 154.8,76.5  C 153.3,75.4 151.9,77.0 153.3,79.9  L 161.5,95.0  L 98.0,144.1  C 93.1,147.8 90.8,151.2 90.8,157.0  L 90.8,166.9  C 90.8,172.3 93.6,174.8 99.2,174.8  L 102.4,174.8  C 104.4,180.5 108.2,183.1 113.1,182.4  C 118.2,181.7 121.0,177.9 124.5,173.0  C 136.0,172.8 143.8,172.3 152.3,167.4  C 159.8,171.1 167.4,172.2 175.7,172.0  C 177.6,188.7 168.3,213.3 160.4,235.1  C 156.8,245.0 154.0,253.1 153.2,263.0  L 249.9,263.0  C 248.8,249.7 252.1,232.8 256.8,210.0  C 261.3,188.3 265.4,167.8 261.7,148.4  C 257.4,125.5 245.0,108.0 228.8,97.2  C 213.2,86.8 195.7,82.7 173.3,85.5  Z"/>
+    </clipPath>
+    <linearGradient id="graphite" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="80" y2="400">
+      <stop offset="0" stop-color="#303642"/>
+      <stop offset=".55" stop-color="#1C2029"/>
+      <stop offset="1" stop-color="#111318"/>
+    </linearGradient>
+    <linearGradient id="porcelain-upper" gradientUnits="userSpaceOnUse" x1="200" y1="52.5" x2="297" y2="200">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset=".58" stop-color="#F5F7FB"/>
+      <stop offset="1" stop-color="#E4E9F0"/>
+    </linearGradient>
+    <linearGradient id="porcelain-lower" gradientUnits="userSpaceOnUse" x1="65" y1="200" x2="189" y2="349">
+      <stop offset="0" stop-color="#EEF2F7"/>
+      <stop offset=".56" stop-color="#E0E6EE"/>
+      <stop offset="1" stop-color="#C8D2DF"/>
+    </linearGradient>
+    <linearGradient id="honey-amber" gradientUnits="userSpaceOnUse" x1="140" y1="76" x2="237" y2="268">
+      <stop offset="0" stop-color="#FFD66B"/>
+      <stop offset=".44" stop-color="#FFBC49"/>
+      <stop offset="1" stop-color="#E68B28"/>
+    </linearGradient>
+    <linearGradient id="mane-amber" gradientUnits="userSpaceOnUse" x1="185" y1="88" x2="265" y2="260">
+      <stop offset="0" stop-color="#FFD36B"/>
+      <stop offset=".44" stop-color="#F5AB36"/>
+      <stop offset="1" stop-color="#CF7523"/>
+    </linearGradient>
+    <linearGradient id="throat-ochre" gradientUnits="userSpaceOnUse" x1="183" y1="162" x2="167" y2="264">
+      <stop offset="0" stop-color="#B86C21"/>
+      <stop offset=".6" stop-color="#DE8623"/>
+      <stop offset="1" stop-color="#F5AF3E"/>
+    </linearGradient>
+    <linearGradient id="collar-gold" gradientUnits="userSpaceOnUse" x1="154" y1="260.5" x2="244" y2="291">
+      <stop offset="0" stop-color="#FFC654"/>
+      <stop offset="1" stop-color="#EB922B"/>
+    </linearGradient>
+    <linearGradient id="plinth-amber" gradientUnits="userSpaceOnUse" x1="151" y1="285.8" x2="250" y2="319">
+      <stop offset="0" stop-color="#F9B441"/>
+      <stop offset="1" stop-color="#DF7C25"/>
+    </linearGradient>
+    <linearGradient id="ear-ochre" gradientUnits="userSpaceOnUse" x1="157" y1="80" x2="170" y2="99">
+      <stop offset="0" stop-color="#C5852D"/>
+      <stop offset="1" stop-color="#D4942C"/>
+    </linearGradient>
+  </defs>
+  <g id="artwork">
+    <g id="background" inkscape:groupmode="layer" inkscape:label="01 · Graphite field">
+      <rect width="400" height="400" fill="url(#graphite)"/>
+    </g>
+    <g id="board" inkscape:groupmode="layer" inkscape:label="02 · Cool porcelain board">
+      <path id="board-top-right" d="M 200.0,52.5 H 270.0  C 298.0,52.5 315.3,58.8 328.8,72.3  C 342.3,85.8 348.5,103.0 348.5,131.0  V 200.0 H 200.0 Z" fill="url(#porcelain-upper)"/>
+      <path id="board-bottom-left" d="M 51.5,200.0 H 200.0 V 348.5 H 130.0  C 102.0,348.5 84.7,342.2 71.2,328.7  C 57.7,315.2 51.5,298.0 51.5,270.0 Z" fill="url(#porcelain-lower)"/>
+    </g>
+    <g id="knight-body" inkscape:groupmode="layer" inkscape:label="03 · Honey-gold knight">
+      <path id="knight-profile" d="M 154.8,76.5  C 153.3,75.4 151.9,77.0 153.3,79.9  L 161.5,95.0  L 98.0,144.1  C 93.1,147.8 90.8,151.2 90.8,157.0  L 90.8,166.9  C 90.8,172.3 93.6,174.8 99.2,174.8  L 102.4,174.8  C 104.4,180.5 108.2,183.1 113.1,182.4  C 118.2,181.7 121.0,177.9 124.5,173.0  C 136.0,172.8 143.8,172.3 152.3,167.4  C 159.8,171.1 167.4,172.2 175.7,172.0  C 177.6,188.7 168.3,213.3 160.4,235.1  C 156.8,245.0 154.0,253.1 153.2,263.0  L 249.9,263.0  C 248.8,249.7 252.1,232.8 256.8,210.0  C 261.3,188.3 265.4,167.8 261.7,148.4  C 257.4,125.5 245.0,108.0 228.8,97.2  C 213.2,86.8 195.7,82.7 173.3,85.5  Z" fill="url(#honey-amber)"/>
+    </g>
+    <g id="knight-color-planes" inkscape:groupmode="layer" inkscape:label="04 · Broad graphic color planes">
+      <g clip-path="url(#knight-body-boundary)">
+        <path id="mane-plane" d="M 173.3,85.5&#10;        C 195.7,82.7 213.2,86.8 228.8,97.2&#10;        C 245,108 257.4,125.5 261.7,148.4&#10;        C 265.4,167.8 261.3,188.3 256.8,210&#10;        C 252.1,232.8 248.8,249.7 249.9,263&#10;        L 228,263 C 225.4,248.4 228.8,232.8 234.0,211&#10;        C 240.9,182.2 246.2,163.6 242.0,144.7&#10;        C 237.9,125.5 226.4,109.0 210.5,99.5&#10;        C 198.6,92.4 186.7,88.6 173.3,85.5 Z" fill="url(#mane-amber)"/>
+        <path id="throat-plane" d="M 191.9,162.9&#10;        C 188.4,166.5 183.0,170.4 175.7,172&#10;        C 177.6,188.7 168.3,213.3 160.4,235.1&#10;        C 156.8,245 154,253.1 153.2,263&#10;        L 170.0,263 C 172.0,250.8 179.8,233.5 186.0,216.1&#10;        C 193.1,196.7 197.9,178.6 191.9,162.9 Z" fill="url(#throat-ochre)" opacity=".66"/>
+      </g>
+    </g>
+    <g id="face-details" inkscape:groupmode="layer" inkscape:label="05 · Eye and inner ear">
+      <path id="inner-ear" d="M 158.2,82.3 L 170.9,91.1 L 165.3,96.0 Z" fill="url(#ear-ochre)" opacity=".8"/>
+      <path id="knight-eye" d="M 142.0,124.3  C 143.3,123.4 144.8,123.5 146.2,124.5  L 151.0,128.1 C 152.4,129.2 152.3,130.6 150.8,131.6  L 145.2,135.2 C 142.7,136.8 140.1,135.5 140.0,132.9  L 139.8,128.1 C 139.8,126.4 140.6,125.3 142.0,124.3 Z" fill="#965520"/>
+      <path id="nostril" d="M 98.8,150.9 C 101,149.8 102.3,151.1 101.7,154 L 100.5,159 C 99.7,162.2 96.4,162.1 96.6,158.7 L 96.8,154.9 C 96.9,153.1 97.4,151.6 98.8,150.9 Z" fill="#B47325" opacity=".6"/>
+    </g>
+    <g id="pedestal" inkscape:groupmode="layer" inkscape:label="06 · Two-tier amber base">
+      <path id="knight-collar" d="M 144.0,260.5 H 255.7  C 261.8,260.5 265.3,263.8 265.3,270.0  V 289.0 H 134.6 V 270.0  C 134.6,263.8 138.0,260.5 144.0,260.5 Z" fill="url(#collar-gold)"/>
+      <path id="collar-foot" d="M134.6,281.9 H265.3 V289 H134.6 Z" fill="#D27A20" opacity=".18"/>
+      <path id="knight-plinth" d="M 132.8,285.8 H 267.2  C 273.8,285.8 277.4,289.5 277.4,295.8  V 307.3 C 277.4,313.6 273.8,317.2 267.2,317.2  H 132.8 C 126.2,317.2 122.6,313.6 122.6,307.3  V 295.8 C 122.6,289.5 126.2,285.8 132.8,285.8 Z" fill="url(#plinth-amber)"/>
+    </g>
+  </g>
+</svg>

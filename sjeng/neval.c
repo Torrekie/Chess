@@ -28,7 +28,7 @@
 
 /* these tables will be used for positional bonuses: */
 
-static int sbishop[144] = {
+static SJENG_THREAD_LOCAL int sbishop[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,-2,-2,-2,-2,-2,-2,-2,-2,0,0,
@@ -42,7 +42,7 @@ static int sbishop[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0};
 
-static int sknight[144] = {
+static SJENG_THREAD_LOCAL int sknight[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,-20,-10,-10,-10,-10,-10,-10,-20,0,0,
@@ -56,7 +56,7 @@ static int sknight[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0};
 
-static int32_t swhite_pawn[144] = {
+static SJENG_THREAD_LOCAL int32_t swhite_pawn[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
@@ -70,7 +70,7 @@ static int32_t swhite_pawn[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0};
 
-static int sblack_pawn[144] = {
+static SJENG_THREAD_LOCAL int sblack_pawn[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
@@ -85,7 +85,7 @@ static int sblack_pawn[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0};
 
 /* to be used during opening and middlegame for white king positioning: */
-static int swhite_king[144] = {
+static SJENG_THREAD_LOCAL int swhite_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,2,14,0,0,0,9,14,2,0,0,
@@ -100,7 +100,7 @@ static int swhite_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0};
 
 /* to be used during opening and middlegame for black king positioning: */
-static int sblack_king[144] = {
+static SJENG_THREAD_LOCAL int sblack_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,-55,-55,-89,-89,-89,-89,-55,-55,0,0,
@@ -115,7 +115,7 @@ static int sblack_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0};
 
 /* to be used for positioning of both kings during the endgame: */
-static int send_king[144] = {
+static SJENG_THREAD_LOCAL int send_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,-5,-3,-1,0,0,-1,-3,-5,0,0,
@@ -130,7 +130,7 @@ static int send_king[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0};
 
 /* utility array to reverse rank: */
-static int srev_rank[9] = {
+static SJENG_THREAD_LOCAL int srev_rank[9] = {
 0,8,7,6,5,4,3,2,1};
 
 const int std_p_tropism[9] = 

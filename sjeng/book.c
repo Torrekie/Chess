@@ -25,12 +25,12 @@
 #include "protos.h"
 #include "extvars.h"
 
-char book[4000][161];
-char book_flags[4000][41];
-int num_book_lines;
-int book_ply;
-int use_book;
-char opening_history[STR_BUFF];
+SJENG_THREAD_LOCAL char book[4000][161];
+SJENG_THREAD_LOCAL char book_flags[4000][41];
+SJENG_THREAD_LOCAL int num_book_lines;
+SJENG_THREAD_LOCAL int book_ply;
+SJENG_THREAD_LOCAL int use_book;
+SJENG_THREAD_LOCAL char opening_history[STR_BUFF];
 
 #define book_always 1        /* corresponds with ! */
 #define book_never 2         /* corresponds with ? */
@@ -174,7 +174,7 @@ move_s choose_book_move (void) {
       Once we choose a book move, we'll make a variable indicate where
       it was found, so we can start our search for the next move there. */
 
-   static int last_book_move = 0;
+   static SJENG_THREAD_LOCAL int last_book_move = 0;
    int book_match = FALSE;
    int i, j, num_moves, random_number, num_replies;
    char possible_move[5], coord_move[5];

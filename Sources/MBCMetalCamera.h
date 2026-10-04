@@ -44,6 +44,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <simd/simd.h>
 
 #import "MBCBoardCommon.h"
@@ -60,6 +61,12 @@ const float kDegrees2Radians = M_PI / 180.0f;
  @abstract Camera position in world space
  */
 @property (nonatomic, readonly) vector_float3 position;
+
+/*! @abstract Camera distance from the board target. */
+@property (nonatomic) float distance;
+
+/*! @abstract Board-plane offset shared by the camera position and look-at target. */
+@property (nonatomic, readonly) vector_float2 boardPlaneOffset;
 
 /*!
  @abstract The horizontal angle of the camera about the vertical (Y) axis of the board. Updated as drag the board to change viewing angle.
@@ -117,6 +124,12 @@ const float kDegrees2Radians = M_PI / 180.0f;
 */
 - (void)updateSize:(vector_float2)size;
 
+/*! @abstract Move the camera target and eye together on the board plane. */
+- (void)translateOnBoardPlaneBy:(vector_float2)delta;
+
+/*! @abstract Restore the default view, zoom, and board-plane offset. */
+- (void)resetUserTransform;
+
 /*!
  @abstract The following three methods encapsulate conversion of position coordinates between world and screen coordinate spaces.
  */
@@ -126,7 +139,7 @@ const float kDegrees2Radians = M_PI / 180.0f;
  @param inPosition World position
  @discussion Converts world position in 3D to point on screen
  */
-- (NSPoint)projectPositionFromModelToScreen:(MBCPosition)inPosition;
+- (CGPoint)projectPositionFromModelToScreen:(MBCPosition)inPosition;
 
 /*!
  @abstract unProjectPositionFromScreenToModel:fromView:

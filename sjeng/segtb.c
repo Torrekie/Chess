@@ -43,7 +43,7 @@
 #define IO_BUFSIZE		    4096
 #define CACHE_SIZE		    8
 
-int upscale[64] = {
+SJENG_THREAD_LOCAL int upscale[64] = {
   A1,B1,C1,D1,E1,F1,G1,H1,
   A2,B2,C2,D2,E2,F2,G2,H2,
   A3,B3,C3,D3,E3,F3,G3,H3,
@@ -54,7 +54,7 @@ int upscale[64] = {
   A8,B8,C8,D8,E8,F8,G8,H8
 };
 
-int vertical_flip[64] = {
+SJENG_THREAD_LOCAL int vertical_flip[64] = {
   7,  6,  5,  4,  3,  2,  1,  0,
   15, 14, 13, 12, 11, 10,  9,  8,
   23, 22, 21, 20, 19, 18, 17, 16,
@@ -67,7 +67,7 @@ int vertical_flip[64] = {
 
 /* angrim : this is 63-x, no need to lookup */
 
-int rotate[64] = {
+SJENG_THREAD_LOCAL int rotate[64] = {
   63, 62, 61, 60, 59, 58, 57, 56,
   55, 54, 53, 52, 51, 50, 49, 48,
   47, 46, 45, 44, 43, 42, 41, 40,
@@ -78,7 +78,7 @@ int rotate[64] = {
   7,  6,  5,  4,  3,  2,  1,  0
 };
 
-int white_addr[64] = {
+SJENG_THREAD_LOCAL int white_addr[64] = {
   0,  1,  2,  3, -1, -1, -1, -1,
   4,  5,  6,  7, -1, -1, -1, -1,
   8,  9, 10, 11, -1, -1, -1, -1,
@@ -89,7 +89,7 @@ int white_addr[64] = {
   28, 29, 30, 31, -1, -1, -1, -1
 };
 
-int section_map[6][6] = {
+SJENG_THREAD_LOCAL int section_map[6][6] = {
   {  0,  1,  2,  3,  4,  5 },
   { -1,  6,  7,  8,  9, 10 },
   { -1, -1, 11, 12, 13, 14 },
@@ -99,8 +99,8 @@ int section_map[6][6] = {
 };
 
 
-int section_trans[] = {666, 0, 0, 1, 1, 5, 5, 3, 3, 4, 4, 2, 2, 6};
-char xpiece_char[] = {'F','P','P','N','N','K','K','R','R','Q','Q','B','B','E' };
+SJENG_THREAD_LOCAL int section_trans[] = {666, 0, 0, 1, 1, 5, 5, 3, 3, 4, 4, 2, 2, 6};
+SJENG_THREAD_LOCAL char xpiece_char[] = {'F','P','P','N','N','K','K','R','R','Q','Q','B','B','E' };
 
 typedef struct 
 {
@@ -108,15 +108,15 @@ typedef struct
   int last_access;
 } cache_data;
 
-signed char *two_piece_data;
-signed char *three_piece_data;
-signed char *temp_table; /* used when generating new tables */
+SJENG_THREAD_LOCAL signed char *two_piece_data;
+SJENG_THREAD_LOCAL signed char *three_piece_data;
+SJENG_THREAD_LOCAL signed char *temp_table; /* used when generating new tables */
 
-int cache_counter;
-cache_data table_cache[CACHE_SIZE];
-int temp_key;
+SJENG_THREAD_LOCAL int cache_counter;
+SJENG_THREAD_LOCAL cache_data table_cache[CACHE_SIZE];
+SJENG_THREAD_LOCAL int temp_key;
 
-int SEGTB;
+SJENG_THREAD_LOCAL int SEGTB;
 
 int valid_2piece(int w, int b, int w_man, int b_man)
 {

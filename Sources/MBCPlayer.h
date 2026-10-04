@@ -43,7 +43,11 @@
 	ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
 #import <Cocoa/Cocoa.h>
+#endif
 
 #import "MBCBoard.h"
 

@@ -1182,9 +1182,11 @@ uint32_t sAttributesForSides[] = {
     static dispatch_once_t onceToken;
     static BOOL sRenderingWithMetal;
     dispatch_once(&onceToken, ^{
-        BOOL isAppleSiliconDevice = [MBCMetalRenderer.defaultMTLDevice supportsFamily:MTLGPUFamilyApple2];
+        /* This is the macOS target.  MTLGPUFamilyApple2 is the iOS/Apple
+         * family and is not the capability test for a Mac Metal device. */
+        BOOL isMacMetalDevice = [MBCMetalRenderer.defaultMTLDevice supportsFamily:MTLGPUFamilyMac2];
         BOOL isNativeProcess = ([self isRunningTranslatedWithRosetta] == 0);
-        sRenderingWithMetal = [MBCUserDefaults isMetalRenderingEnabled] && isAppleSiliconDevice && isNativeProcess;
+        sRenderingWithMetal = [MBCUserDefaults isMetalRenderingEnabled] && isMacMetalDevice && isNativeProcess;
     });
     return sRenderingWithMetal;
 }

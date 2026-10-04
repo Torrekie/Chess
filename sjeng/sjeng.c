@@ -33,63 +33,63 @@
 #include "config.h"
 #include <machine/endian.h>
 
-char divider[50] = "-------------------------------------------------";
-move_s dummy = {0,0,0,0,0};
+SJENG_THREAD_LOCAL char divider[50] = "-------------------------------------------------";
+SJENG_THREAD_LOCAL move_s dummy = {0,0,0,0,0};
 
-int board[144], moved[144], ep_square, white_to_move, comp_color, wking_loc,
+SJENG_THREAD_LOCAL int board[144], moved[144], ep_square, white_to_move, comp_color, wking_loc,
   bking_loc, white_castled, black_castled, result, ply, pv_length[PV_BUFF],
   pieces[62], squares[144], num_pieces, i_depth, fifty, piece_count;
 
-int32_t nodes, raw_nodes, qnodes,  killer_scores[PV_BUFF],
+SJENG_THREAD_LOCAL int32_t nodes, raw_nodes, qnodes,  killer_scores[PV_BUFF],
   killer_scores2[PV_BUFF], killer_scores3[PV_BUFF], moves_to_tc, min_per_game,
   sec_per_game, inc, time_left, opp_time, time_cushion, time_for_move, cur_score;
 
-uint32_t history_h[144][144];
+SJENG_THREAD_LOCAL uint32_t history_h[144][144];
 
-uint32_t hash_history[600];
-int move_number;
+SJENG_THREAD_LOCAL uint32_t hash_history[600];
+SJENG_THREAD_LOCAL int move_number;
 
-bool captures, searching_pv, post, time_exit, time_failure;
+SJENG_THREAD_LOCAL bool captures, searching_pv, post, time_exit, time_failure;
 
-int xb_mode, maxdepth;
+SJENG_THREAD_LOCAL int xb_mode, maxdepth;
 
-int phase;
-int root_to_move;
+SJENG_THREAD_LOCAL int phase;
+SJENG_THREAD_LOCAL int root_to_move;
 
-int my_rating, opp_rating;
+SJENG_THREAD_LOCAL int my_rating, opp_rating;
 
-char setcode[30];
+SJENG_THREAD_LOCAL char setcode[30];
 
-move_s pv[PV_BUFF][PV_BUFF], killer1[PV_BUFF], killer2[PV_BUFF],
+SJENG_THREAD_LOCAL move_s pv[PV_BUFF][PV_BUFF], killer1[PV_BUFF], killer2[PV_BUFF],
  killer3[PV_BUFF];
 
-move_x path_x[PV_BUFF];
-move_s path[PV_BUFF];
+SJENG_THREAD_LOCAL move_x path_x[PV_BUFF];
+SJENG_THREAD_LOCAL move_s path[PV_BUFF];
  
-rtime_t start_time;
+SJENG_THREAD_LOCAL rtime_t start_time;
 
-int is_promoted[62];
+SJENG_THREAD_LOCAL int is_promoted[62];
 
-int NTries, NCuts, TExt;
-uint32_t PVS, FULL, PVSF;
-int EGTBHits, EGTBProbes;
+SJENG_THREAD_LOCAL int NTries, NCuts, TExt;
+SJENG_THREAD_LOCAL uint32_t PVS, FULL, PVSF;
+SJENG_THREAD_LOCAL int EGTBHits, EGTBProbes;
 
-bool is_pondering, allow_pondering, is_analyzing;
+SJENG_THREAD_LOCAL bool is_pondering, allow_pondering, is_analyzing;
 
-int Variant;
-int Giveaway;
+SJENG_THREAD_LOCAL int Variant;
+SJENG_THREAD_LOCAL int Giveaway;
 
-char my_partner[STR_BUFF];
-bool have_partner;
-bool must_sit;
-bool go_fast;
+SJENG_THREAD_LOCAL char my_partner[STR_BUFF];
+SJENG_THREAD_LOCAL bool have_partner;
+SJENG_THREAD_LOCAL bool must_sit;
+SJENG_THREAD_LOCAL bool go_fast;
 
-int32_t fixed_time;
+SJENG_THREAD_LOCAL int32_t fixed_time;
 
-FILE *lrn_standard;
-FILE *lrn_zh;
-FILE *lrn_suicide;
-FILE *lrn_losers;
+SJENG_THREAD_LOCAL FILE *lrn_standard;
+SJENG_THREAD_LOCAL FILE *lrn_zh;
+SJENG_THREAD_LOCAL FILE *lrn_suicide;
+SJENG_THREAD_LOCAL FILE *lrn_losers;
 
 /*
  * sjeng expects to get away with calling fclose(NULL), which crashes 
@@ -478,6 +478,10 @@ int main (int argc, char *argv[]) {
 	safe_fclose(lrn_losers);
 	free_hash();
 	free_ecache();
+	#ifdef MBC_IOS_IN_PROCESS_SJENG
+	free_egtb();
+	safe_fclose(rcfile);
+	#endif
 	exit (EXIT_SUCCESS);
       }
       else if (!strcmp (input, "exit"))
@@ -571,7 +575,9 @@ int main (int argc, char *argv[]) {
       else if (!strcmp (input, "xboard")) {
 	xb_mode = TRUE;
 	toggle_bool (&show_board);
+	#ifndef MBC_IOS_IN_PROCESS_SJENG
 	signal (SIGINT, SIG_IGN);
+	#endif
 	printf ("\n");
 	
 	/* Reset f5 in case we left with partner */
@@ -873,7 +879,11 @@ int main (int argc, char *argv[]) {
 	continue;
       }
       else if (!strncmp (input, "sd", 2)) {
-	sscanf(input, "%d", &maxdepth);
+	/* The command includes the "sd" prefix; parse the numeric depth after
+	 * it.  Reading from input itself leaves maxdepth at its default (40),
+	 * which makes the iOS in-process CVC game appear to stop while searching
+	 * even when the UI requested the one-move setting. */
+	sscanf(input + 2, "%d", &maxdepth);
 	printf("New max depth set to: %d\n", maxdepth);
 	continue;
       }

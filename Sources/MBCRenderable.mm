@@ -79,6 +79,7 @@ const MBCSimpleVertex kSimpleQuadVertices[] = {
  5 white in hand pieces and 5 black in hand pieces during Crazy House game variant.
  */
 const size_t kMaxLabelInstances = 26;
+const size_t kMaxSelectionInstances = 65; // Selected piece plus every board square.
 
 NSUInteger MBCGetSupportedGPUSampleCount(id<MTLDevice> device) {
     if ([device supportsTextureSampleCount:RASTER_SAMPLE_COUNT]) {
@@ -1013,7 +1014,9 @@ NSUInteger MBCGetSupportedGPUSampleCount(id<MTLDevice> device) {
 - (void)createPerFrameBuffersWithDevice:(id<MTLDevice>)device {
     NSMutableArray<id<MTLBuffer>> *perFrameBuffers = [NSMutableArray arrayWithCapacity:kMaxFramesInFlight];
     for (int i = 0; i < kMaxFramesInFlight; ++i) {
-        id<MTLBuffer> buffer = [device newBufferWithLength:sizeof(MBCDecalRenderableData) * kMaxLabelInstances
+        size_t capacity = [_textureName isEqualToString:@"PieceSelection"]
+            ? kMaxSelectionInstances : kMaxLabelInstances;
+        id<MTLBuffer> buffer = [device newBufferWithLength:sizeof(MBCDecalRenderableData) * capacity
                                                    options:MTLResourceStorageModeShared];
         buffer.label = [NSString stringWithFormat:@"%@ Decal", _debugName];
         [perFrameBuffers addObject:buffer];

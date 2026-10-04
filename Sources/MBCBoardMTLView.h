@@ -46,8 +46,18 @@
 #import "MBCBoardViewInterface.h"
 #import "MBCBoardCommon.h"
 
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
 #import <Cocoa/Cocoa.h>
+#else
+#import <UIKit/UIKit.h>
+#endif
 #import <MetalKit/MetalKit.h>
+
+#if TARGET_OS_IOS
+extern NSString * const MBCIOSBoardIdleTapNotification;
+extern NSString * const MBCIOSBoardCameraChangedNotification;
+#endif
 
 @class MBCBoard;
 @class MBCBoardWin;
@@ -123,6 +133,7 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
     /*!
      @abstract Reference to instance of hand shaped cursor with pointing finger
      */
+#if TARGET_OS_OSX
     NSCursor *_pointingHandCursor;
     
     /*!
@@ -134,21 +145,55 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
      @abstract Reference to instance of arrow shaped cursor
      */
     NSCursor *_arrowCursor;
+#endif
     
     /*!
      @abstract Stores the previous mouse move event's mouse position
      */
+#if TARGET_OS_OSX
     NSPoint _previousMousePosition;
+#else
+    CGPoint _previousMousePosition;
+#endif
     
     /*!
      @abstract Current mouse position tracked during mouse moves
      */
+#if TARGET_OS_OSX
     NSPoint _currentMousePosition;
+#else
+    CGPoint _currentMousePosition;
+#endif
     
     /*!
      @abstract Whether or not currently rotating the board (camera)
      */
     BOOL _inBoardManipulation;
+
+#if TARGET_OS_IOS
+    /*! Distinguish a deliberate stationary background tap from a camera drag. */
+    CGPoint _boardManipulationStartPoint;
+    BOOL _boardManipulationDidMove;
+
+    /*! Whether UIKit is animating an interface-size transition. */
+    BOOL _orientationTransitioning;
+
+    /*! Previous centroid and span for the two-finger camera gesture. */
+    CGPoint _previousGestureCenter;
+    CGFloat _previousGestureSpan;
+    BOOL _inTwoFingerManipulation;
+    BOOL _awaitingPromotionChoice;
+    /*! Cached legal drop destinations for the selected Crazyhouse pocket. */
+    uint64_t _legalDropTargetsMask;
+    uint64_t _renderedLegalDropTargetsMask;
+    MBCSquare _legalDropOrigin;
+    int _legalDropMoveCount;
+    BOOL _legalDropTargetsValid;
+    NSMutableArray<MBCBoardDecalInstance *> *_legalDropTargetInstances;
+    /*! Retain virtual VoiceOver squares across accessibility tree queries. */
+    NSMutableDictionary<NSNumber *, UIAccessibilityElement *> *_iosAccessibilitySquareElements;
+    NSMutableArray<UIAccessibilityElement *> *_iosVisibleAccessibilityElements;
+#endif
     
     /*!
      @abstract Set if want to pass mouse clicks to interactive player
@@ -256,14 +301,18 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
     /*!
      @abstract The tracking area for mouse events
      */
+#if TARGET_OS_OSX
     NSTrackingArea *_trackingArea;
+#endif
 }
 
 /*!
  @abstract Match the aspect ratio for the main window for resizing.
  This will maintain the aspect of the view when the game log is revealed.
  */
+#if TARGET_OS_OSX
 @property (nonatomic, strong) IBOutlet NSLayoutConstraint *aspectConstraint;
+#endif
 
 /*!
  @abstract The horizontal angle of the camera about the vertical (Y) axis of the board. Updated as drag the board to change viewing angle.
@@ -311,6 +360,12 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
  @discussion Called from MBCBoardWin (MTKViewDelegate) to render Metal content to view
  */
 - (void)drawMetalContent;
+
+/*! Shared board binding used by the iOS shell; macOS continues to bind from its window controller. */
+- (void)setBoard:(MBCBoard *)board;
+- (MBCBoard *)board;
+- (MBCVariant)variant;
+- (MBCSide)side;
 
 /*!
  @abstract boardDrawStyleAtIndex:
@@ -370,6 +425,19 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
  @discussion Will trigger immediate redrawing for the view.
 */
 - (void)drawNow;
+
+#if TARGET_OS_IOS
+/*! Freeze intermediate camera-size updates while UIKit rotates the interface. */
+- (void)beginOrientationTransition;
+- (void)endOrientationTransition;
+- (BOOL)isOrientationTransitioning;
+
+/*! Submit a UIKit/coordinate-entry move through this board view. */
+- (void)iosSubmitMove:(MBCMove *)move;
+
+/*! Restore the default camera view used by a new macOS-style board. */
+- (void)resetCamera;
+#endif
 
 /*!
  @abstract profileDraw
@@ -523,6 +591,9 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
  @discussion Pass YES if want to pass mouse clicks on to interactive player.
 */
 - (void)wantMouse:(BOOL)wantIt;
+
+/*! @abstract Whether board input is currently enabled for the interactive player. */
+- (BOOL)wantsMouse;
 
 /*!
  @abstract willAzimuthRotateLabels:

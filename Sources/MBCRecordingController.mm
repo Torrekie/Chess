@@ -75,7 +75,9 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
 
 @property (nonatomic, strong) SCStream *stream;
 @property (nonatomic, strong) NSURL *outputURL;
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
 @property (nonatomic, strong) SCRecordingOutput *recordingOutput;
+#endif
 
 @end
 
@@ -83,7 +85,11 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
 
 @end
 
-@interface MBCRecordingController() <SCStreamDelegate, SCRecordingOutputDelegate, NSMenuDelegate>
+@interface MBCRecordingController() <SCStreamDelegate,
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
+SCRecordingOutputDelegate,
+#endif
+NSMenuDelegate>
 
 @end
 
@@ -172,7 +178,9 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
     
     streamConfiguration.minimumFrameInterval = CMTimeMake(1, 60);
     
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140000
     streamConfiguration.streamName = displayName;
+#endif
     
     return streamConfiguration;
 }
@@ -198,7 +206,12 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
     MBCDocument *gameDocument = (MBCDocument *)[window windowController].document;
     NSString *displayName = gameDocument.displayName;
     
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 140400
     [SCShareableContent getCurrentProcessShareableContentWithCompletionHandler:^(SCShareableContent *shareableContent, NSError *error) {
+#else
+    // Use the general window-list API when the SDK lacks the current-process API.
+    [SCShareableContent getShareableContentWithCompletionHandler:^(SCShareableContent *shareableContent, NSError *error) {
+#endif
         dispatch_async(dispatch_get_main_queue(), ^{
             NSError *localError = error;
             if (!localError) {
@@ -234,6 +247,15 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
 }
 
 - (void)startSCStreamForWindow:(SCWindow *)window displayName:(NSString *)displayName completionHandler:(MBCRecordingBlock)completionHandler {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 150000
+    // SDKs without SCRecordingOutput cannot record a stream.
+    // MBCController enables recording only where that API is available.
+    NSError *unsupportedError = [NSError errorWithDomain:MBCRecordingErrorDomain
+                                                     code:MBCRecordingErrorCodeInvalidStream
+                                                 userInfo:@{NSLocalizedDescriptionKey: @"Chess recording requires macOS 15 or later."}];
+    completionHandler(unsupportedError);
+    return;
+#else
     // Create filter to only record the game window
     SCContentFilter *contentFilter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
     
@@ -277,6 +299,7 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
             });
         }];
     }
+#endif
 }
 
 - (void)stopRecordingWindow:(NSWindow *)window 
@@ -372,6 +395,7 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
     }];
 }
 
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 150000
 #pragma mark - SCRecordingOutputDelegate
 
 - (NSWindow *)windowForRecordingOutput:(SCRecordingOutput *)recordingOutput {
@@ -415,6 +439,7 @@ NSString *const MBCRecordingErrorDomain = @"com.apple.Chess.MBCRecordingErrorDom
         [self cleanupRecordingSessionForWindow:window];
     });
 }
+#endif
 
 #pragma mark - Game Menu Items
 

@@ -255,7 +255,10 @@ void MBCMoveCollection::AddMove(
 
 void MBCMoveCollection::AddDrop(MBCPiece piece, MBCSquare at)
 {
-	if ((piece = MBCPiece(piece)) == PAWN) {
+	// The masks are indexed by type.  A black piece's full code cannot fit
+	// in the one-byte fDroppablePieces mask, and black pawns still use fPawnDrops.
+	piece = Piece(piece);
+	if (piece == PAWN) {
 		fPawnDrops			|= (1llu << at);
 	} else {	
 		fPieceDrops 		|= (1llu << at);

@@ -45,8 +45,6 @@
 
 #import "MBCBoardMTLView.h"
 
-#import <Cocoa/Cocoa.h>
-
 @interface MBCBoardMTLView (Draw)
 
 /*!

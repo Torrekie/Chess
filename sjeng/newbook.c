@@ -50,12 +50,12 @@ typedef struct
   int32_t result; /* 0: 1-0  1:1/2  2:0-1  3:? */
 } pgn_header_t;
 
-uint32_t kksize;
-unsigned char *keycache;
+SJENG_THREAD_LOCAL uint32_t kksize;
+SJENG_THREAD_LOCAL unsigned char *keycache;
 
-uint32_t bookpos[400], booktomove[400], bookidx;
+SJENG_THREAD_LOCAL uint32_t bookpos[400], booktomove[400], bookidx;
 
-int gamenum;
+SJENG_THREAD_LOCAL int gamenum;
 
 void get_header(FILE *pgnbook, pgn_header_t *pgn_header)
 {

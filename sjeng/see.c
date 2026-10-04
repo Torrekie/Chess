@@ -30,8 +30,8 @@ typedef struct
   int square;
 } see_data;
 
-see_data see_attackers[2][16];
-int see_num_attackers[2];
+SJENG_THREAD_LOCAL see_data see_attackers[2][16];
+SJENG_THREAD_LOCAL int see_num_attackers[2];
 
 void setup_attackers (int square) {
 

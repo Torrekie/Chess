@@ -25,7 +25,7 @@
 #include "extvars.h"
 #include "protos.h"
 
-static int lcentral[144] = {
+static SJENG_THREAD_LOCAL int lcentral[144] = {
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,-20,-15,-15,-15,-15,-15,-15,-20,0,0,

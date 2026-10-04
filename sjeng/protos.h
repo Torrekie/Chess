@@ -173,6 +173,7 @@ int egtb(int s);
 int load_2piece();
 int load_3piece(int w1_man, int b1_man, int b2_man, signed char *t);
 int init_segtb();
+void free_egtb(void);
 
 #endif
 

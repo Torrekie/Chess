@@ -146,7 +146,10 @@ private:
 	void	TryDrops();
 	void	TryMoves(bool unambiguous);
 
-	id <MBCMoveBuilder> 	fBuilder;
+	/* The caller owns the builder for the duration of Generate(). Keep this
+	 * reference non-owning so ARC callers do not release it once for the C++
+	 * member and again for their local builder variable. */
+	id __unsafe_unretained fBuilder;
 	long					fFlags;
 	MBCVariant				fVariant;
 	MBCPieceCode			fColor;

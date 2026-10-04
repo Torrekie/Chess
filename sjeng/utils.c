@@ -31,8 +31,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <unistd.h>
-fd_set read_fds;
-struct timeval timeout = { 0, 0 };
+SJENG_THREAD_LOCAL fd_set read_fds;
+SJENG_THREAD_LOCAL struct timeval timeout = { 0, 0 };
 #else
 #ifdef _WIN32
 #undef frame
@@ -52,9 +52,9 @@ struct timeval timeout = { 0, 0 };
 #define loBits(u)      ((u) & 0x7FFFFFFFU)   
 #define mixBits(u, v)  (hiBit(u)|loBits(v))  
 
-static uint32_t   state[N+1];     
-static uint32_t   *next;          
-int                    left = -1;      
+static SJENG_THREAD_LOCAL uint32_t   state[N+1];
+static SJENG_THREAD_LOCAL uint32_t   *next;
+SJENG_THREAD_LOCAL int                    left = -1;
 
 int32_t allocate_time (void) {
 
@@ -983,6 +983,12 @@ int interrupt(void)
 {
   int c;
 
+#ifdef MBC_IOS_IN_PROCESS_SJENG
+  /* Stop an embedded iOS engine even in variants that ignore xboard input
+   * while searching. This guard leaves the upstream macOS engine unchanged. */
+  if (MBCIOSjengStopRequested()) return 1;
+#endif
+
 #ifdef HAVE_SELECT
   FD_ZERO(&read_fds);
   FD_SET(0,&read_fds);
@@ -1012,7 +1018,7 @@ int interrupt(void)
   else return 0;
 #else 
 #ifdef _WIN32
-  static int init = 0, pipe;
+  static SJENG_THREAD_LOCAL int init = 0, pipe;
   static HANDLE inh;
   DWORD dw;
   if(xb_mode) {     /* winboard interrupt code taken from crafty */

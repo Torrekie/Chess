@@ -26,13 +26,13 @@
 #include "extvars.h"
 #include "limits.h"
 
-uint32_t zobrist[17][144];
+SJENG_THREAD_LOCAL uint32_t zobrist[17][144];
 
-uint32_t hash;
+SJENG_THREAD_LOCAL uint32_t hash;
 
-uint32_t TTProbes;
-uint32_t TTHits;
-uint32_t TTStores;
+SJENG_THREAD_LOCAL uint32_t TTProbes;
+SJENG_THREAD_LOCAL uint32_t TTHits;
+SJENG_THREAD_LOCAL uint32_t TTStores;
 
 typedef struct 
 {
@@ -60,9 +60,9 @@ QTType;
 TType AS_TTable[TTSIZE];
 */
 
-TType *DP_TTable;
-TType *AS_TTable;
-QTType *QS_TTable;
+SJENG_THREAD_LOCAL TType *DP_TTable;
+SJENG_THREAD_LOCAL TType *AS_TTable;
+SJENG_THREAD_LOCAL QTType *QS_TTable;
 
 void clear_tt(void)
 {

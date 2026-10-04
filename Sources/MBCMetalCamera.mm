@@ -54,6 +54,8 @@ const float kStartingAzimuth = 180.f;
 const float kNearClipPlane = 0.1f;
 const float kFarClipPlane = 300.f;
 const float kDistance = 185.f;
+const float kMinimumDistance = 110.f;
+const float kMaximumDistance = 300.f;
 const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
 
 @interface MBCMetalCamera () {
@@ -61,6 +63,8 @@ const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
      @abstract The MTKView size in pixels
      */
     vector_float2 _size;
+
+    vector_float2 _boardPlaneOffset;
     
     /*
      @abstract Aspect ratio of the MTKView (width / height)
@@ -90,11 +94,13 @@ const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
     self = [super init];
     if (self) {
         _size = size;
-        _aspectRatio = size.x / size.y;
+        _aspectRatio = size.y > 0.f ? size.x / size.y : 1.f;
         _viewport = simd_make_float4(0.f, 0.f, size.x, size.y);
         
         _elevation = kStartingElevation;
         _azimuth = kStartingAzimuth;
+        _distance = kDistance;
+        _boardPlaneOffset = simd_make_float2(0.f, 0.f);
         
         [self updatePosition];
     }
@@ -113,40 +119,73 @@ const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
     [self updatePosition];
 }
 
+- (void)setDistance:(float)distance {
+    _distance = MAX(kMinimumDistance, MIN(kMaximumDistance, distance));
+    [self updatePosition];
+}
+
 - (void)updatePosition {
-    float cameraY = kDistance * sin(_elevation * kDegrees2Radians);
-    float cameraXZ = kDistance * cos(_elevation * kDegrees2Radians);
+    float cameraY = _distance * sin(_elevation * kDegrees2Radians);
+    float cameraXZ = _distance * cos(_elevation * kDegrees2Radians);
     float cameraX = cameraXZ * sin(_azimuth * kDegrees2Radians);
     float cameraZ = cameraXZ * -cos(_azimuth * kDegrees2Radians);
-    
-    _position = simd_make_float3(cameraX, cameraY, cameraZ);
+
+    _position = simd_make_float3(cameraX + _boardPlaneOffset.x,
+                                 cameraY,
+                                 cameraZ + _boardPlaneOffset.y);
 
     [self updateViewMatrix];
 }
 
 - (void)updateViewMatrix {
     static const vector_float3 kUpVector = { 0.f, 1.f, 0.f};
-    static const vector_float3 kZeroVector = { 0.f, 0.f, 0.f };
-    
-    _viewMatrix = matrix_look_at_right_hand(_position, kZeroVector, kUpVector);
+
+    vector_float3 target = simd_make_float3(_boardPlaneOffset.x, 0.f, _boardPlaneOffset.y);
+    _viewMatrix = matrix_look_at_right_hand(_position, target, kUpVector);
 
     // Reflection view matrix created from camera positioned below the board
     vector_float3 reflectCameraPosition = simd_make_float3(_position.x, -_position.y, _position.z);
-    _reflectionViewMatrix = matrix_look_at_right_hand(reflectCameraPosition, kZeroVector, kUpVector);
+    _reflectionViewMatrix = matrix_look_at_right_hand(reflectCameraPosition, target, kUpVector);
     
     [self updateViewProjectionMatrix];
 }
 
+- (vector_float2)boardPlaneOffset {
+    return _boardPlaneOffset;
+}
+
+- (void)translateOnBoardPlaneBy:(vector_float2)delta {
+    _boardPlaneOffset += delta;
+    [self updatePosition];
+}
+
+- (void)resetUserTransform {
+    _azimuth = kStartingAzimuth;
+    _elevation = kStartingElevation;
+    _distance = kDistance;
+    _boardPlaneOffset = simd_make_float2(0.f, 0.f);
+    [self updatePosition];
+}
+
 - (void)updateSize:(vector_float2)size {
     _size = size;
-    _aspectRatio = MAX(1.f, size.x / size.y);
+    // Keep the true drawable aspect ratio in both orientations.  Clamping a
+    // portrait drawable to 1.0 makes the perspective matrix project a square
+    // board with a non-square screen scale, visibly stretching the cells.
+    _aspectRatio = size.y > 0.f ? size.x / size.y : 1.f;
     _viewport = simd_make_float4(0.f, 0.f, size.x, size.y);
     
     [self updateProjectionMatrix];
 }
 
 - (void)updateProjectionMatrix {
-    _projectionMatrix = matrix_perspective_right_hand(kVerticalFieldOfView, _aspectRatio, kNearClipPlane, kFarClipPlane);
+    // Keep the board framed when the drawable is taller than it is wide.  The
+    // macOS projection widens its vertical field of view for this case; a
+    // fixed FOV with the true portrait aspect would preserve square cells but
+    // crop the board horizontally.
+    float portraitScale = _size.x > 0.f ? MAX(1.f, _size.y / _size.x) : 1.f;
+    float verticalFieldOfView = 2.f * atanf(tanf(kVerticalFieldOfView * 0.5f) * portraitScale);
+    _projectionMatrix = matrix_perspective_right_hand(verticalFieldOfView, _aspectRatio, kNearClipPlane, kFarClipPlane);
     
     [self updateViewProjectionMatrix];
 }
@@ -158,7 +197,7 @@ const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
     _reflectionViewProjectionMatrix = simd_mul(_projectionMatrix, _reflectionViewMatrix);
 }
 
-- (NSPoint)projectPositionFromModelToScreen:(MBCPosition)inPosition {
+- (CGPoint)projectPositionFromModelToScreen:(MBCPosition)inPosition {
     vector_float3 position = { inPosition[0], inPosition[1], inPosition[2] };
     
     // Transform the object coordinates by view projection matrix
@@ -177,7 +216,7 @@ const float kVerticalFieldOfView = 35.f * kDegrees2Radians;
     // subtract for y flip on macOS
     float y = _viewport.y + _viewport.w * (0.5f - transformed.y * 0.5f);
 
-    NSPoint point = {x, y};
+    CGPoint point = {x, y};
     
     return point;
 }

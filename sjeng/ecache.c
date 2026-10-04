@@ -33,10 +33,10 @@ int32_t score;
 } ECacheType;
 
 /*ECacheType ECache[ECACHESIZE];*/
-ECacheType *ECache;
+SJENG_THREAD_LOCAL ECacheType *ECache;
 
-uint32_t ECacheProbes;
-uint32_t ECacheHits;
+SJENG_THREAD_LOCAL uint32_t ECacheProbes;
+SJENG_THREAD_LOCAL uint32_t ECacheHits;
 
 void storeECache(int32_t score)
 {

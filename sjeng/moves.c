@@ -25,16 +25,16 @@
 #include "extvars.h"
 #include "protos.h"
 
-uint32_t total_moves;
-uint32_t total_movegens;
+SJENG_THREAD_LOCAL uint32_t total_moves;
+SJENG_THREAD_LOCAL uint32_t total_movegens;
 
-int numb_moves;
-static move_s *genfor;
+SJENG_THREAD_LOCAL int numb_moves;
+static SJENG_THREAD_LOCAL move_s *genfor;
 
-int fcaptures;
-int gfrom;
+SJENG_THREAD_LOCAL int fcaptures;
+SJENG_THREAD_LOCAL int gfrom;
 
-int kingcap; /* break if we capture the king */
+SJENG_THREAD_LOCAL int kingcap; /* break if we capture the king */
 
 bool check_legal (move_s moves[], int m, int incheck) {
 

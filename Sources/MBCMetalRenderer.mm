@@ -54,6 +54,7 @@
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 #import <MetalPerformanceShaders/MetalPerformanceShaders.h>
+#import <TargetConditionals.h>
 
 #define MOVE_MAIN_LIGHT_WITH_BOARD 1
 
@@ -135,10 +136,10 @@ const float kReflectionBlurSigma = 3.f;
      */
     NSString *_rendererID;
     
-    /*!
-     @abstract Name of the material style being used, one of "Wood", "Marble", or "Metal"
-     */
-    NSString *_currentMaterialStyle;
+    /*! Names of the current board and piece materials. A renderer can retain
+     * one or two styles in MBCMetalMaterials' per-renderer usage sets. */
+    NSString *_currentBoardMaterialStyle;
+    NSString *_currentPieceMaterialStyle;
     
     /*!
      @abstract Default Metal device
@@ -354,6 +355,17 @@ const float kReflectionBlurSigma = 3.f;
     return self;
 }
 
+- (void)dealloc {
+    MBCMetalMaterials *materials = [MBCMetalMaterials shared];
+    if (_currentBoardMaterialStyle) {
+        [materials releaseUsageForStyle:_currentBoardMaterialStyle rendererID:_rendererID];
+    }
+    if (_currentPieceMaterialStyle &&
+        ![_currentPieceMaterialStyle isEqualToString:_currentBoardMaterialStyle]) {
+        [materials releaseUsageForStyle:_currentPieceMaterialStyle rendererID:_rendererID];
+    }
+}
+
 - (void)initializeMetal {
     _commandQueue = [_device newCommandQueue];
     _library = [_device newDefaultLibrary];
@@ -361,13 +373,6 @@ const float kReflectionBlurSigma = 3.f;
     _mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     
     _mtkView.depthStencilPixelFormat = MTLPixelFormatDepth32Float;
-    if ([_device supportsFamily:MTLGPUFamilyApple2]) {
-        // Apple Silicon Macs support Shared storage mode.
-        _mtkView.depthStencilStorageMode = MTLStorageModeShared;
-    } else {
-        _mtkView.depthStencilStorageMode = MTLStorageModeManaged;
-    }
-
     _mtkView.depthStencilAttachmentTextureUsage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite | MTLTextureUsageRenderTarget;
     
     {
@@ -647,45 +652,58 @@ const float kReflectionBlurSigma = 3.f;
 }
 
 - (void)loadMaterialsForNewStyle:(NSString *)newStyle {
-    
-    if (_currentMaterialStyle && [_currentMaterialStyle isEqualToString:newStyle]) {
-        return;
-    }
-    
-    NSString *oldStyle = [_currentMaterialStyle copy];
-    _currentMaterialStyle = [newStyle copy];
-    
+    [self loadMaterialsForBoardStyle:newStyle pieces:newStyle];
+}
+
+static NSString *MBCMetalSupportedStyle(NSString *style) {
+    return [@[@"Wood", @"Marble", @"Metal"] containsObject:style] ? style : @"Wood";
+}
+
+- (void)loadMaterialsForBoardStyle:(NSString *)boardStyle pieces:(NSString *)pieceStyle {
+    boardStyle = MBCMetalSupportedStyle(boardStyle);
+    pieceStyle = MBCMetalSupportedStyle(pieceStyle);
+    if ([_currentBoardMaterialStyle isEqualToString:boardStyle] &&
+        [_currentPieceMaterialStyle isEqualToString:pieceStyle]) return;
+
+    NSString *oldBoardStyle = _currentBoardMaterialStyle;
+    NSString *oldPieceStyle = _currentPieceMaterialStyle;
     MBCMetalMaterials *materials = [MBCMetalMaterials shared];
-    
-    [materials loadMaterialsForRendererID:_rendererID newStyle:newStyle];
-    
-    _boardRenderable.drawStyle = [materials boardMaterialWithStyle:newStyle];
-    
-    _whitePieceRenderables[KING].drawStyle = [materials materialForPiece:White(KING) style:newStyle];
-    _blackPieceRenderables[KING].drawStyle = [materials materialForPiece:Black(KING) style:newStyle];
-    
-    _whitePieceRenderables[QUEEN].drawStyle = [materials materialForPiece:White(QUEEN) style:newStyle];
-    _blackPieceRenderables[QUEEN].drawStyle = [materials materialForPiece:Black(QUEEN) style:newStyle];
-    
-    _whitePieceRenderables[BISHOP].drawStyle = [materials materialForPiece:White(BISHOP) style:newStyle];
-    _blackPieceRenderables[BISHOP].drawStyle = [materials materialForPiece:Black(BISHOP) style:newStyle];
-    
-    _whitePieceRenderables[KNIGHT].drawStyle = [materials materialForPiece:White(KNIGHT) style:newStyle];
-    _blackPieceRenderables[KNIGHT].drawStyle = [materials materialForPiece:Black(KNIGHT) style:newStyle];
-    
-    _whitePieceRenderables[ROOK].drawStyle = [materials materialForPiece:White(ROOK) style:newStyle];
-    _blackPieceRenderables[ROOK].drawStyle = [materials materialForPiece:Black(ROOK) style:newStyle];
-    
-    _whitePieceRenderables[PAWN].drawStyle = [materials materialForPiece:White(PAWN) style:newStyle];
-    _blackPieceRenderables[PAWN].drawStyle = [materials materialForPiece:Black(PAWN) style:newStyle];
-    
-    // Release usage of old style.
-    if (oldStyle) {
-        [materials releaseUsageForStyle:oldStyle rendererID:_rendererID];
+
+    /* Usage is a set of renderer IDs per style. Register both distinct new
+     * styles before releasing an old one, so a board/piece style swap cannot
+     * evict materials still in use by this renderer. */
+    [materials loadMaterialsForRendererID:_rendererID newStyle:boardStyle];
+    if (![pieceStyle isEqualToString:boardStyle]) {
+        [materials loadMaterialsForRendererID:_rendererID newStyle:pieceStyle];
+    }
+
+    _boardRenderable.drawStyle = [materials boardMaterialWithStyle:boardStyle];
+    const MBCPieceCode types[] = {KING, QUEEN, BISHOP, KNIGHT, ROOK, PAWN};
+    for (NSUInteger index = 0; index < sizeof(types) / sizeof(types[0]); ++index) {
+        MBCPieceCode type = types[index];
+        _whitePieceRenderables[type].drawStyle =
+            [materials materialForPiece:White(type) style:pieceStyle];
+        _blackPieceRenderables[type].drawStyle =
+            [materials materialForPiece:Black(type) style:pieceStyle];
+    }
+
+    _currentBoardMaterialStyle = [boardStyle copy];
+    _currentPieceMaterialStyle = [pieceStyle copy];
+    if (oldBoardStyle && ![oldBoardStyle isEqualToString:boardStyle] &&
+        ![oldBoardStyle isEqualToString:pieceStyle]) {
+        [materials releaseUsageForStyle:oldBoardStyle rendererID:_rendererID];
+    }
+    if (oldPieceStyle && ![oldPieceStyle isEqualToString:oldBoardStyle] &&
+        ![oldPieceStyle isEqualToString:boardStyle] &&
+        ![oldPieceStyle isEqualToString:pieceStyle]) {
+        [materials releaseUsageForStyle:oldPieceStyle rendererID:_rendererID];
     }
 }
 
 - (void)drawableSizeWillChange:(CGSize)size {
+    if (size.width <= 0.0 || size.height <= 0.0) {
+        return;
+    }
     vector_float2 simdSize = simd_make_float2(size.width, size.height);
     [_camera updateSize:simdSize];
     
@@ -700,8 +718,15 @@ const float kReflectionBlurSigma = 3.f;
  */
 - (void)updateReflectionTexturesForSize:(CGSize)size {
     // Reflection color map textures
+    // MPS cannot write an sRGB texture on iOS. Keep the forward drawable in
+    // sRGB, but use a linear BGRA target for the blur destination.
+#if TARGET_OS_IOS
+    const MTLPixelFormat reflectionPixelFormat = MTLPixelFormatBGRA8Unorm;
+#else
+    const MTLPixelFormat reflectionPixelFormat = _mtkView.colorPixelFormat;
+#endif
     MTLTextureDescriptor *descriptor =
-        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:_mtkView.colorPixelFormat
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:reflectionPixelFormat
                                                            width:size.width * 0.5f
                                                           height:size.height * 0.5f
                                                        mipmapped:NO];
@@ -1011,6 +1036,12 @@ const float kReflectionBlurSigma = 3.f;
 }
 
 - (float)readPixel:(vector_float2)position {
+#if TARGET_OS_IOS
+    // iOS touch picking uses known-Y camera unprojection. MTKView may keep its
+    // depth attachment private, so CPU readback is intentionally unavailable.
+    (void)position;
+    return 1.0f;
+#else
     if(!_mtkView.depthStencilTexture) {
         return 1.0;
     }
@@ -1043,6 +1074,7 @@ const float kReflectionBlurSigma = 3.f;
                                 fromRegion:region
                                mipmapLevel:0];
     return depth;
+#endif
 }
 
 - (void)updateShadowMatricesForViewChange {
@@ -1144,6 +1176,10 @@ const float kReflectionBlurSigma = 3.f;
 - (void)setPieceSelectionInstance:(MBCBoardDecalInstance *)instance {
     // Draw the piece selection graphic if visible
     NSArray *instances = instance.isVisible ? @[instance] : @[];
+    [self setPieceSelectionInstances:instances];
+}
+
+- (void)setPieceSelectionInstances:(NSArray<MBCBoardDecalInstance *> *)instances {
     [_selectionRenderable setInstances:instances];
 }
 

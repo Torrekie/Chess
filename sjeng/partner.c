@@ -25,13 +25,13 @@
 #include "protos.h"
 #include "extvars.h"
 
-int hand_value[] = { 0, 100, -100, 210, -210, 0, 0, 250, -250, 450, -450, 230, -230 }; 
-int std_hand_value[] = { 0, 100, -100, 210, -210, 0, 0, 250, -250, 450, -450, 230, -230 };
+SJENG_THREAD_LOCAL int hand_value[] = { 0, 100, -100, 210, -210, 0, 0, 250, -250, 450, -450, 230, -230 };
+SJENG_THREAD_LOCAL int std_hand_value[] = { 0, 100, -100, 210, -210, 0, 0, 250, -250, 450, -450, 230, -230 };
 
-bool piecedead;
-bool partnerdead;
+SJENG_THREAD_LOCAL bool piecedead;
+SJENG_THREAD_LOCAL bool partnerdead;
 
-int must_go;
+SJENG_THREAD_LOCAL int must_go;
 
 void ResetHandValue(void)
 {
@@ -505,7 +505,7 @@ void CheckBadFlow(bool reset)
     rookmates = FALSE, 
     queenmates = FALSE;
   
-  static int 
+  static SJENG_THREAD_LOCAL int
     pawnmated = FALSE, 
     knightmated = FALSE, 
     bishopmated = FALSE, 

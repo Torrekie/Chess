@@ -44,6 +44,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
 
 #import "MBCUserDefaults.h"
 
@@ -71,6 +72,9 @@ NSString * const kMBCCastleSides        = @"MBCCastleSides";
 NSString * const kMBCGCVictories        = @"MBCGCVictories";
 NSString * const kMBCShowGameLog        = @"MBCShowGameLog";
 NSString * const kMBCShowEdgeNotation   = @"MBCShowEdgeNotation";
+#if TARGET_OS_IOS
+NSString * const kMBCAutoRotateBoard    = @"MBCAutoRotateBoard";
+#endif
 NSString * const kMBCSharePlayEnabledFF = @"SharePlayEnabled";
 NSString * const kMBCUseMetalRendererFF = @"UseMetalRenderer";
 
@@ -91,7 +95,16 @@ NSString * const kMBCUseMetalRendererFF = @"UseMetalRenderer";
     static BOOL sUsingMetal;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        /* The Metal renderer is the maintained macOS path.  MBCBoardWin
+         * still checks the Mac GPU family and Rosetta state before selecting
+         * it, so unsupported or translated processes keep the OpenGL fallback.
+         * The iOS shell selects its Metal view directly and keeps the original
+         * default here. */
+#if TARGET_OS_OSX
+        sUsingMetal = YES;
+#else
         sUsingMetal = NO;
+#endif
     });
     return sUsingMetal;
 }

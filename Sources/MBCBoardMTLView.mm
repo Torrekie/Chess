@@ -45,7 +45,10 @@
 
 #import "MBCBoardMTLView.h"
 #import "MBCBoardCommon.h"
+#import "MBCBoard.h"
+#if TARGET_OS_OSX
 #import "MBCBoardWin.h"
+#endif
 #import "MBCDrawStyle.h"
 #import "MBCMetalCamera.h"
 #import "MBCMetalMaterials.h"
@@ -57,6 +60,7 @@
 #import "MBCBoardMTLViewDraw.h"
 
 #import <simd/simd.h>
+#import <TargetConditionals.h>
 
 const float kClearColorRed     = 0.f;
 const float kClearColorGreen   = 0.f;
@@ -90,10 +94,14 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 
 @synthesize boardReflectivity=_boardReflectivity;
 
-- (instancetype)initWithFrame:(NSRect)rect {
+- (instancetype)initWithFrame:(MBCViewRect)rect {
     self = [super initWithFrame:rect];
     if (self) {
         self.clearColor = MTLClearColorMake(kClearColorRed, kClearColorGreen, kClearColorBlue, 1.0);
+#if TARGET_OS_IOS
+        self.userInteractionEnabled = YES;
+        self.multipleTouchEnabled = YES;
+#endif
 
         _inAnimation = NO;
         _inBoardManipulation = NO;
@@ -104,9 +112,11 @@ const int kEdgeNotationAlphaStartIndex  = 8;
         
         _keyBuffer = 0;
         
+#if TARGET_OS_OSX
         _pointingHandCursor = [NSCursor pointingHandCursor];
         _grabbingHandCursor = [NSCursor closedHandCursor];
         _arrowCursor = [NSCursor arrowCursor];
+#endif
         
         NSMutableArray *pool = [[NSMutableArray alloc] initWithCapacity:kInitialInstancePoolCapacity];
         for (int i = 0; i < 32; ++i) {
@@ -138,7 +148,9 @@ const int kEdgeNotationAlphaStartIndex  = 8;
         
         _needsRender = YES;
         
+#if TARGET_OS_OSX
         [self updateTrackingAreas];
+#endif
     }
     return self;
 }
@@ -162,6 +174,7 @@ const int kEdgeNotationAlphaStartIndex  = 8;
     [instances addObject:[NSMutableArray arrayWithCapacity:8]];  // PAWN   (8)
 }
 
+#if TARGET_OS_OSX
 - (void)updateTrackingAreas {
     [super updateTrackingAreas];
     
@@ -172,29 +185,49 @@ const int kEdgeNotationAlphaStartIndex  = 8;
                                                 userInfo:nil];
     [self addTrackingArea:_trackingArea];
 }
+#endif
 
 - (void)pickPixelFormat:(BOOL)afterFailure {
     
 }
 
+- (void)setBoard:(MBCBoard *)board {
+    _board = board;
+#if TARGET_OS_IOS
+    _awaitingPromotionChoice = NO;
+    _legalDropTargetsValid = NO;
+#endif
+}
+
+- (MBCBoard *)board {
+    return _board;
+}
+
+- (MBCVariant)variant {
+    return _variant;
+}
+
+- (MBCSide)side {
+    return _side;
+}
+
 - (void)setStyleForBoard:(NSString *)boardStyle pieces:(NSString *)pieceStyle {
-    if ([boardStyle isEqualToString:@"Grass"]) {
-        // No longer using Grass board with Metal renderer, will default to Wood.
-        boardStyle = @"Wood";
-    }
-    
-    // Only one popup menu is visible for Metal implementation.
-    [self.renderer loadMaterialsForNewStyle:boardStyle];
+    // The Metal renderer accepts the maintained Wood, Marble, and Metal
+    // resources independently. Legacy OpenGL styles fall back to Wood.
+    [self.renderer loadMaterialsForBoardStyle:boardStyle pieces:pieceStyle];
 
     [self needsUpdate];
 }
 
+#if TARGET_OS_OSX
 - (void)awakeFromNib {
     _controller = (MBCBoardWin *)[[self window] windowController];
     _board = [_controller board];
     _interactive = [_controller interactive];
 }
+#endif
 
+#if TARGET_OS_OSX
 - (BOOL)isOpaque {
     return NO;
 }
@@ -202,6 +235,7 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 - (BOOL)mouseDownCanMoveWindow {
     return NO;
 }
+#endif
 
 - (BOOL)shouldUpdateAndRenderScene {
     /* 
@@ -227,7 +261,34 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 
 - (void)drawNow {
     _needsRender = YES;
+#if TARGET_OS_OSX
+    [self setNeedsDisplay:YES];
+#else
+    [self setNeedsDisplay];
+#endif
 }
+
+#if TARGET_OS_IOS
+- (void)beginOrientationTransition {
+    _orientationTransitioning = YES;
+}
+
+- (void)endOrientationTransition {
+    _orientationTransitioning = NO;
+}
+
+- (BOOL)isOrientationTransitioning {
+    return _orientationTransitioning;
+}
+
+- (void)resetCamera {
+    if (!_renderer) return;
+    [_renderer.camera resetUserTransform];
+    [_renderer cameraDidRotateAboutYAxis];
+    _performLabelFlip = YES;
+    [self drawNow];
+}
+#endif
 
 - (void)profileDraw {
     dispatch_apply(100, dispatch_get_main_queue(), ^(size_t) {
@@ -254,6 +315,10 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 - (void)startGame:(MBCVariant)variant playing:(MBCSide)side {
     _variant = variant;
     _side = side;
+#if TARGET_OS_IOS
+    _awaitingPromotionChoice = NO;
+    _legalDropTargetsValid = NO;
+#endif
     [self endGame];
     if (side != kNeitherSide && [self facing] != kNeitherSide) {
         //
@@ -321,6 +386,11 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 }
 
 - (void)showMoveAsHint:(MBCMove *)move {
+    // The renderer keeps a per-type arrow instance between frames.  A new
+    // move must invalidate the previous instance before it can be rebuilt.
+    _hintMoveArrowInstance = nil;
+    [self.renderer setHintMoveInstance:nil
+                      lastMoveInstance:_lastMoveArrowInstance];
     _hintMove = move;
     
     MBCPiece hintPiece = _hintMove->fPiece;
@@ -334,6 +404,11 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 }
 
 - (void)showMoveAsLast:(MBCMove *)move {
+    // The renderer keeps a per-type arrow instance between frames.  Without
+    // invalidation, subsequent moves continue to draw the first move's arrow.
+    _lastMoveArrowInstance = nil;
+    [self.renderer setHintMoveInstance:_hintMoveArrowInstance
+                      lastMoveInstance:nil];
     _lastMove = move;
     
     [self needsUpdate];
@@ -383,6 +458,9 @@ const int kEdgeNotationAlphaStartIndex  = 8;
     _selectedPiece = EMPTY;
     _selectedSquare = kInvalidSquare;
     _selectedDestination = kInvalidSquare;
+#if TARGET_OS_IOS
+    _legalDropTargetsValid = NO;
+#endif
 
     [self needsUpdate];
 }
@@ -474,9 +552,15 @@ const int kEdgeNotationAlphaStartIndex  = 8;
     MBCPosition pos;
 
     if (square > kInHandSquare) {
-        pos[0] = 44.0f;
+        MBCPiece pocketPiece = square - kInHandSquare;
+        int pocketIndex = 0;
+        while (pocketIndex < 5 && gMTLInHandOrder[pocketIndex] != Piece(pocketPiece)) {
+            ++pocketIndex;
+        }
+        pos[0] = kInHandPieceXMTL;
         pos[1] = 0.0f;
-        pos[2] = Color(square - kInHandSquare) == kBlackPiece ? -20.0f : 20.0f;
+        pos[2] = (Color(pocketPiece) == kBlackPiece ? -1.0f : 1.0f) *
+            (kInHandPieceZOffset + kInHandPieceSize * (pocketIndex + 0.5f));
     } else {
         // Board squares can have values in range [0, 63]
         // Square x or y center position values can be one of
@@ -514,6 +598,10 @@ const int kEdgeNotationAlphaStartIndex  = 8;
 
 - (void)wantMouse:(BOOL)wantIt {
     _wantMouse = wantIt;
+}
+
+- (BOOL)wantsMouse {
+    return _wantMouse;
 }
 
 - (void)startAnimation {

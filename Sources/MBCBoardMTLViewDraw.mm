@@ -50,6 +50,12 @@
 #import "MBCMetalCamera.h"
 #import "MBCMetalRenderer.h"
 
+#if TARGET_OS_IOS
+@interface MBCBoardMTLView (IOSLegalDropTargets)
+- (uint64_t)iosLegalDropTargets;
+@end
+#endif
+
 MBCPieceCode gMTLInHandOrder[] = {PAWN, BISHOP, KNIGHT, ROOK, QUEEN};
 
 /*!
@@ -272,10 +278,13 @@ inline bool IsPieceRenderable(MBCPiece piece) {
             MBCPosition pickedPos = [self squareToPosition:_pickedSquare];
             vector_float3 position = { pickedPos[0], MBC_POSITION_Y_PIECE_SELECTION, pickedPos[2] };
             
-            const unsigned zeroIndexRow = Row(_pickedSquare) - 1;
-            const unsigned column = _pickedSquare & 7;
-            BOOL firstSquareInRowIsBlack = (zeroIndexRow & 0x01) == 0;
-            BOOL isBlackSquare = firstSquareInRowIsBlack ? (column & 0x01) != 1 : (column & 0x01) == 1;
+            BOOL isBlackSquare = NO;
+            if (_pickedSquare < kBoardSquares) {
+                const unsigned zeroIndexRow = Row(_pickedSquare) - 1;
+                const unsigned column = _pickedSquare & 7;
+                BOOL firstSquareInRowIsBlack = (zeroIndexRow & 0x01) == 0;
+                isBlackSquare = firstSquareInRowIsBlack ? (column & 0x01) != 1 : (column & 0x01) == 1;
+            }
             
             _pieceSelectionInstance.visible = YES;
             _pieceSelectionInstance.position = position;
@@ -287,9 +296,42 @@ inline bool IsPieceRenderable(MBCPiece piece) {
         _pieceSelectionInstance.visible = NO;
         updateRenderer = YES;
     }
+#if TARGET_OS_IOS
+    uint64_t legalTargets = [self iosLegalDropTargets];
+    if (!updateRenderer && legalTargets == _renderedLegalDropTargetsMask) return;
+    NSMutableArray<MBCBoardDecalInstance *> *instances =
+        [NSMutableArray arrayWithCapacity:1 + __builtin_popcountll(legalTargets)];
+    if (_pieceSelectionInstance.visible) {
+        [instances addObject:_pieceSelectionInstance];
+    }
+    if (legalTargets) {
+        if (!_legalDropTargetInstances) {
+            _legalDropTargetInstances = [NSMutableArray arrayWithCapacity:kBoardSquares];
+            for (MBCSquare square = 0; square < kBoardSquares; ++square) {
+                MBCPosition boardPosition = [self squareToPosition:square];
+                vector_float3 position = { boardPosition[0],
+                    MBC_POSITION_Y_PIECE_SELECTION, boardPosition[2] };
+                MBCBoardDecalInstance *marker =
+                    [[MBCBoardDecalInstance alloc] initWithPosition:position];
+                marker.quadVertexScale = 2.2f;
+                marker.animateScale = NO;
+                marker.color = simd_make_float3(0.36f, 0.90f, 0.56f);
+                [_legalDropTargetInstances addObject:marker];
+            }
+        }
+        for (MBCSquare square = 0; square < kBoardSquares; ++square) {
+            if (legalTargets & (1ULL << square)) {
+                [instances addObject:_legalDropTargetInstances[square]];
+            }
+        }
+    }
+    [self.renderer setPieceSelectionInstances:instances];
+    _renderedLegalDropTargetsMask = legalTargets;
+#else
     if (updateRenderer) {
         [self.renderer setPieceSelectionInstance:_pieceSelectionInstance];
     }
+#endif
 }
 
 - (void)updateEdgeNotationLabels {

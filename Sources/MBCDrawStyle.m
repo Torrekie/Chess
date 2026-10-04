@@ -46,7 +46,10 @@
 #import "MBCDrawStyle.h"
 #import "MBCShaderTypes.h"
 
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
 #import <OpenGL/glu.h>
+#endif
 #import <Metal/Metal.h>
 
 @implementation MBCDrawStyle
@@ -76,12 +79,15 @@
 }
 
 - (void)unloadTexture {
+#if TARGET_OS_OSX
     if (fTexture) {
         glDeleteTextures(1, &fTexture);
     }
+#endif
 }
 
 - (void)startStyle:(float)alpha {
+#if TARGET_OS_OSX
     GLfloat white_texture_color[4]     =
         {fDiffuse, fDiffuse, fDiffuse, fAlpha*alpha};
     GLfloat emission_color[4]         =
@@ -95,6 +101,9 @@
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_color);
     glMaterialf(GL_FRONT, GL_SHININESS, fShininess);
     glBindTexture(GL_TEXTURE_2D, fTexture);
+#else
+    (void)alpha;
+#endif
 }
 
 - (MBCSimpleMaterial)materialForPBR {

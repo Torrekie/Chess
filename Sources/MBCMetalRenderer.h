@@ -44,6 +44,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
 #import <simd/simd.h>
 #import "MBCBoardEnums.h"
 
@@ -140,12 +141,20 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)setPieceSelectionInstance:(MBCBoardDecalInstance * _Nullable)instance;
 
+/*! Draw the selected piece and any legal destination markers together. */
+- (void)setPieceSelectionInstances:(NSArray<MBCBoardDecalInstance *> *)instances;
+
 /*!
  @abstract loadMaterialsForNewStyle:
  @param newStyle The name of the style to use for the board and pieces
  @discussion Loads the MBCDrawStyle instances that define the materials used to render the board and pieces in the scene.
 */
 - (void)loadMaterialsForNewStyle:(NSString *)newStyle;
+
+/*! Apply independent materials to the board and chess pieces. The old
+ * one-style selector above remains a same-style convenience wrapper. */
+- (void)loadMaterialsForBoardStyle:(NSString *)boardStyle
+                           pieces:(NSString *)pieceStyle;
 
 @end
 

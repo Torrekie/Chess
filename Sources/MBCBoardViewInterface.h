@@ -44,6 +44,14 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
+#import <Cocoa/Cocoa.h>
+#define MBCViewRect NSRect
+#else
+#import <UIKit/UIKit.h>
+#define MBCViewRect CGRect
+#endif
 #import <simd/vector_types.h>
 
 #import "MBCBoardEnums.h"
@@ -129,7 +137,7 @@ struct MBCPosition;
  @param rect The rect used to initialize the view's frame
  @discussion Common init function to initialize NSView
 */
-- (instancetype)initWithFrame:(NSRect)rect;
+- (instancetype)initWithFrame:(MBCViewRect)rect;
 
 /*!
  @abstract awakeFromNib
@@ -142,7 +150,7 @@ struct MBCPosition;
  @param rect The rect used to draw view contents
  @discussion This function is used to draw the contents for the view
 */
-- (void)drawRect:(NSRect)rect;
+- (void)drawRect:(MBCViewRect)rect;
 
 /*!
  @abstract startGame:playing:

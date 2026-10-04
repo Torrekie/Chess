@@ -46,10 +46,16 @@
 #import "MBCEngineCommands.h"
 #import "MBCMoveGenerator.h"
 #import "MBCPlayer.h"
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
 #import "MBCDocument.h"
+#else
+extern void MBCAbort(NSString *message, id document);
+#endif
 
 #import <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 NSString *  gVariantName[] = {
 	@"normal", @"crazyhouse", @"suicide", @"losers", nil
@@ -89,6 +95,8 @@ static const char * sPieceChar = " KQBNRP";
 	fCastling	=	kUnknownCastle;
 	fEnPassant	= 	NO;
 	fAnimate	=	YES;
+    fPreviousMoveClock = 0;
+    fPreviousEnPassant = kInvalidSquare;
 	
 	return self;
 }
@@ -347,8 +355,10 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
 - (id)init
 {
-    if (self = [super init])
+    if (self = [super init]) {
         fObservers = [[NSMutableArray alloc] init];
+        fInitialFullmoveNumber = 1;
+    }
     
     return self;
 }
@@ -367,6 +377,8 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
     [self removeChessObservers];
     [fObservers release];
     [fMoves release];
+    [fInitialFen release];
+    [fInitialHolding release];
     [super dealloc];
 }
 
@@ -375,6 +387,7 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
     fDocument   = doc;
 	fMoves      = nil;
 
+	#if TARGET_OS_OSX
 	[self resetWithVariant:[doc variant]];
     
     [self removeChessObservers];
@@ -391,12 +404,18 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
             if (fen.length > 0 || moves.length > 0)
                 [self setFen:fen holding:holding moves:moves];
         }]];
+	#else
+	// The UIKit shell owns game setup directly; retain the document hook for
+	// source compatibility without depending on the AppKit document class.
+	[self resetWithVariant:kVarNormal];
+	#endif
 }
 
 - (void) resetWithVariant:(MBCVariant)variant
 {
 	memset(fCurPos.fBoard, EMPTY, 64);
 	memset(fCurPos.fInHand, 0, 16);
+	fCurPos.fEnPassant = kInvalidSquare;
 
 	/* White pieces */
 	fCurPos.fBoard[Square('a',1)] = White(ROOK);
@@ -443,6 +462,14 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
 	fPromotion[0] = QUEEN;
 	fPromotion[1] = QUEEN;
+    fInitialPos = fCurPos;
+    fInitialMoveCount = 0;
+    fInitialMoveClock = 0;
+    fInitialFullmoveNumber = 1;
+    [fInitialFen release];
+    fInitialFen = [[self fen] copy];
+    [fInitialHolding release];
+    fInitialHolding = [[self holding] copy];
 }
 
 - (void) startGame:(MBCVariant)variant
@@ -513,6 +540,11 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 	if (move->fCommand != kCmdMove && move->fCommand != kCmdDrop)
 		return;
 
+    move->fPreviousMoveClock = fMoveClock;
+    move->fPreviousEnPassant = fCurPos.fEnPassant;
+    move->fVictim = EMPTY;
+    move->fEnPassant = NO;
+
 	//
 	// Make the move on the board
 	//
@@ -520,12 +552,14 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 	MBCSquare	fromSquare	= move->fFromSquare;
 	MBCPiece * 	board		= fCurPos.fBoard;
 	char *		inHand		= fCurPos.fInHand;
-	MBCPiece 	piece 		= move->fPromotion;
+	MBCPiece 	piece 		= EMPTY;
 
 	if (move->fCommand == kCmdMove) {
 		move->fPiece = board[fromSquare];
 		[self tryCastling:move];
 		[self tryPromotion:move];
+		// Read the selected or default promotion only after tryPromotion fills it.
+		piece = move->fPromotion;
 		if (!piece) { 
 			//
 			// Not a pawn promotion, piece stays the same
@@ -577,7 +611,7 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 		}
 		piece			   |= kPieceMoved;
 		if (!move->fVictim && Piece(piece) == PAWN && 
-			labs(Row(fromSquare)-Row(toSquare))==2
+			labs((long)Row(fromSquare)-(long)Row(toSquare))==2
 		)
 			fCurPos.fEnPassant	= Square(Col(fromSquare), 
 										 (Row(fromSquare)+Row(toSquare))/2);
@@ -589,6 +623,7 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 		// to have moved yet.
 		//
 		piece	= move->fPiece;
+        fCurPos.fEnPassant = kInvalidSquare;
 		if (--inHand[piece] < 0)
             MBCAbort([NSString localizedStringWithFormat:@"Dropping non-existent %c", 
                       sPieceChar[Piece(move->fPiece)]], 
@@ -807,13 +842,8 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
 - (bool) undoMoves:(int)numMoves
 {
-	if ((int)[fMoves count]<numMoves)
+	if (numMoves < 0 || (int)[fMoves count] - fInitialMoveCount < numMoves)
 		return false;
-
-	if (fMoveClock < numMoves)
-		fMoveClock = 0;
-	else
-		fMoveClock -= numMoves;
 
 	while (numMoves-- > 0) {
 		MBCMove *  	move 		= [fMoves lastObject];
@@ -850,10 +880,18 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 			--inHand[Captured(victim)];
 		}
 
+        fMoveClock = move->fPreviousMoveClock;
+        fCurPos.fEnPassant = move->fPreviousEnPassant;
 		[fMoves removeLastObject];
 
 		[self consistencyCheck];
 	}
+    if ((int)[fMoves count] == fInitialMoveCount) {
+        // Imported black-to-move games retain a synthetic turn marker.  It
+        // is part of the starting position, never a move to undo.
+        fCurPos = fInitialPos;
+        fMoveClock = fInitialMoveClock;
+    }
 	fPrvPos = fCurPos;
 
 	return true;
@@ -900,7 +938,12 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 		*p++ = '-';
 	*p++ = ' ';
 	*p++ = '-';
-	if ([fMoves count]) {
+	if (fCurPos.fEnPassant != kInvalidSquare) {
+		p[-1] = Col(fCurPos.fEnPassant);
+		*p++ = Row(fCurPos.fEnPassant) + '0';
+	} else if ([fMoves count]) {
+		/* Retain the historical fallback for positions reconstructed by the
+		 * legacy undo path, which derives the target from the last move. */
 		MBCMove *  move = [fMoves lastObject];
 		if ((move->fPiece & (7|kPieceMoved)) == PAWN
 			&& (Row(move->fToSquare) & 6) == 4
@@ -909,7 +952,8 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 			*p++  = Row(move->fToSquare) == 4 ? '3' : '6';
 		}
 	}
-	snprintf(p, 32, " %d %lu", fMoveClock, ([fMoves count]/2)+1);
+	snprintf(p, 32, " %d %lu", fMoveClock,
+             (unsigned long)(fInitialFullmoveNumber + [fMoves count]/2));
 
 	return [NSString stringWithUTF8String:pos+1];
 }
@@ -940,28 +984,53 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
 	for (int m = 0; m<numMoves; ++m) {
 		MBCMove *  move = [fMoves objectAtIndex:m];
-		[moves appendString:[move engineMove]];
+		NSString *engineMove = [move engineMove];
+		if (engineMove.length)
+			[moves appendString:engineMove];
 	}
 	return moves;
 }
 
-- (void) setFen:(NSString *)fen holding:(NSString *)holding 
-	moves:(NSString *)moves
+- (NSString *)initialFen
 {
-	if (moves.length > 0) {
-		//
-		// We prefer to restore the game by replaying the moves
-		//
-		[self resetWithVariant:fVariant];
-		NSArray * 		m = [moves componentsSeparatedByString:@"\n"];
-		NSEnumerator *	e = [m objectEnumerator];
-		while (NSString * move = [e nextObject]) 
-			if ([move length])
-				[self makeMove:[MBCMove moveFromEngineMove:move]];
-		if (![fen isEqual:[self fen]])
-			NSLog(@"FEN Mismatch, Expected: <%@> Got <%@>\n",
-				  fen, [self fen]);
-	} else {
+    return fInitialFen ?: [self fen];
+}
+
+- (NSString *)initialHolding
+{
+    return fInitialHolding ?: [self holding];
+}
+
+- (void) setFen:(NSString *)fen holding:(NSString *)holding
+    moves:(NSString *)moves
+{
+    [self setFen:fen holding:holding moves:moves
+       initialFen:nil initialHolding:nil];
+}
+
+- (void) setFen:(NSString *)fen holding:(NSString *)holding
+    moves:(NSString *)moves initialFen:(NSString *)initialFen
+    initialHolding:(NSString *)initialHolding
+{
+    if (moves.length > 0) {
+        [self resetWithVariant:fVariant];
+        if (initialFen.length && initialHolding.length)
+            [self setFen:initialFen holding:initialHolding moves:@""];
+        NSArray *parts = [moves componentsSeparatedByString:@"\n"];
+        for (NSString *part in parts)
+            if (part.length)
+                [self makeMove:[MBCMove moveFromEngineMove:part]];
+        if ((fen.length && ![fen isEqualToString:[self fen]]) ||
+            (holding.length && ![holding isEqualToString:[self holding]])) {
+            NSLog(@"FEN replay mismatch; loading authoritative final position: expected <%@> got <%@>",
+                  fen, [self fen]);
+            // Old .game files have no initial position.  A nonstandard start
+            // cannot be reconstructed from their Moves field alone.
+            if (fen.length && holding.length)
+                [self setFen:fen holding:holding moves:@""];
+        }
+    } else {
+        [self resetWithVariant:fVariant];
 		const char * s = [fen UTF8String];
 		MBCPiece *   firstSquareInRank = fCurPos.fBoard+kSquareA8;    //beginning with the last rank
         MBCPiece *   b = firstSquareInRank;
@@ -1053,6 +1122,12 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
             if (*s == 'b') {
                 ++s;
                 [fMoves addObject:[MBCMove moveWithCommand:kCmdNull]];
+            } else if (*s == 'w') {
+                /* Consume the side-to-move field before reading castling
+                 * rights.  Without this, a FEN beginning with " w KQkq"
+                 * treats the w as a castling token and leaves the kings and
+                 * rooks marked as moved. */
+                ++s;
             }
 
             while (isspace(*s))
@@ -1081,9 +1156,14 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
             while (isspace(*s))
                 ++s;
 
-            //check if "en passant" move
-            if (*s >= 'a' && *s <= 'h' && *(s+1) >= '1' && *(s+1) <= '8')
-                fCurPos.fBoard[Square(*s, s[1]-'0')] &= ~kPieceMoved;
+            // Preserve the FEN en-passant target.  The original loader only
+            // cleared a moved bit on that square, which left SAN replay unable
+            // to resolve a legal en-passant capture from an imported PGN.
+            fCurPos.fEnPassant = kInvalidSquare;
+            if (*s >= 'a' && *s <= 'h' && *(s+1) >= '1' && *(s+1) <= '8') {
+                fCurPos.fEnPassant = Square(*s, s[1]-'0');
+                fCurPos.fBoard[fCurPos.fEnPassant] &= ~kPieceMoved;
+            }
 
             if (!*s || !*(s+1)) break;
             
@@ -1094,6 +1174,12 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
             while (isdigit(*s))
                 fMoveClock = 10*fMoveClock + *s++ - '0';
+            while (isspace(*s))
+                ++s;
+            if (isdigit(*s)) {
+                int fullmove = atoi(s);
+                if (fullmove > 0) fInitialFullmoveNumber = fullmove;
+            }
 
             //parse "Holding" key
             memset(fCurPos.fInHand, 0, 16);
@@ -1175,6 +1261,29 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
             [alert release];
              *****/
         }
+
+        /* The legacy parser loops once more while reading holdings and
+         * clears the transient target.  Restore the FEN field after that
+         * loop so imported en-passant positions remain legal. */
+        if (!isCorrupt) {
+            NSArray *fenFields = [fen componentsSeparatedByString:@" "];
+            NSString *enPassant = fenFields.count > 3 ? fenFields[3] : nil;
+            fCurPos.fEnPassant = kInvalidSquare;
+            if (enPassant.length == 2 && [enPassant characterAtIndex:0] >= 'a' &&
+                [enPassant characterAtIndex:0] <= 'h' &&
+                [enPassant characterAtIndex:1] >= '1' &&
+                [enPassant characterAtIndex:1] <= '8') {
+                fCurPos.fEnPassant = Square((char)[enPassant characterAtIndex:0],
+                                                   [enPassant characterAtIndex:1] - '0');
+            }
+        }
+        fInitialPos = fCurPos;
+        fInitialMoveCount = (int)[fMoves count];
+        fInitialMoveClock = fMoveClock;
+        [fInitialFen release];
+        fInitialFen = [[self fen] copy];
+        [fInitialHolding release];
+        fInitialHolding = [[self holding] copy];
     }
 	fPrvPos = fCurPos;
 }
@@ -1183,21 +1292,20 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 {
 	NSArray * existingMoves = [fMoves copy];
 	int moves = [fMoves count];
+    int firstMove = fInitialMoveCount;
 	
-	//
-	// Reset board so we can disambiguate moves
-	//
-	[self undoMoves:moves];
+	// Reset only to the recorded origin, preserving a black-to-move turn marker.
+	[self undoMoves:moves - firstMove];
 
-	//
-	// Now retrace the moves
-	//
-	for (int m = 0; m<moves; ++m) {
-		if (!(m&1)) {
-			if (!(m%10))
-				fputc('\n', f);
-			fprintf(f, "%d. ", (m / 2)+1);
-		}
+	// Now retrace playable moves from that origin.
+	for (int m = firstMove; m<moves; ++m) {
+        if (m == firstMove && (m & 1)) {
+            fprintf(f, "%d... ", fInitialFullmoveNumber + m / 2);
+        } else if (!(m & 1)) {
+            if (!((m - firstMove) % 10))
+                fputc('\n', f);
+            fprintf(f, "%d. ", fInitialFullmoveNumber + m / 2);
+        }
 		MBCMove *  move = [existingMoves objectAtIndex:m];
 
 		if (move->fCommand == kCmdDrop) { // Drop, never ambiguous
@@ -1270,7 +1378,7 @@ bool MBCPieces::NoPieces(MBCPieceCode color)
 
 - (BOOL) canUndo
 {
-	return [fMoves count] > 1;
+	return (int)[fMoves count] > fInitialMoveCount;
 }
 
 - (MBCMove *) lastMove

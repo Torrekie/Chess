@@ -44,8 +44,12 @@
 */
 
 #import "MBCBoardEnums.h"
+#import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
 #import <OpenGL/gl.h>
 #import <Cocoa/Cocoa.h>
+#endif
 #import <stdio.h>
 
 extern NSString *   gVariantName[];
@@ -71,6 +75,8 @@ extern const MBCSide gEngineSide[];
     BOOL           fCheck;        // Check, set by [board makeMove]
     BOOL           fCheckMate;    // Checkmate, set asynchronously
     BOOL 			fAnimate;		// Animate on board
+    int            fPreviousMoveClock;  // Halfmove clock before this move
+    MBCSquare      fPreviousEnPassant;  // En-passant target before this move
 }
 
 - (id) initWithCommand:(MBCMoveCode)command;
@@ -115,6 +121,12 @@ struct MBCPieces {
 	MBCVariant			fVariant;
 	NSMutableArray *	fMoves;
 	MBCPiece			fPromotion[2];
+    MBCPieces           fInitialPos;
+    int                 fInitialMoveCount;
+    int                 fInitialMoveClock;
+    int                 fInitialFullmoveNumber;
+    NSString *          fInitialFen;
+    NSString *          fInitialHolding;
     NSMutableArray *    fObservers;
     id                  fDocument;
 }
@@ -136,8 +148,13 @@ struct MBCPieces {
 - (NSString *)	fen;							// Position in FEN notation
 - (NSString *)	holding;                        // Pieces held
 - (NSString *) 	moves;							// Moves in engine format
+- (NSString *)   initialFen;                     // Position before recorded moves
+- (NSString *)   initialHolding;                 // Holdings before recorded moves
 - (void)        setFen:(NSString *)fen holding:(NSString *)holding 
 				moves:(NSString *)moves;
+- (void)        setFen:(NSString *)fen holding:(NSString *)holding
+                moves:(NSString *)moves initialFen:(NSString *)initialFen
+       initialHolding:(NSString *)initialHolding;
 - (BOOL)		saveMovesTo:(FILE *)f;
 - (BOOL) 		canPromote:(MBCSide)side;
 - (BOOL)	    canUndo;

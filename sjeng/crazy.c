@@ -26,18 +26,18 @@
 #include "protos.h"
 #include "extvars.h"
 
-int holding[2][16];
-int num_holding[2];
+SJENG_THREAD_LOCAL int holding[2][16];
+SJENG_THREAD_LOCAL int num_holding[2];
 
-char realholdings[255];
-int userealholdings;
+SJENG_THREAD_LOCAL char realholdings[255];
+SJENG_THREAD_LOCAL int userealholdings;
 
-int drop_piece;
+SJENG_THREAD_LOCAL int drop_piece;
 
-int white_hand_eval;
-int black_hand_eval;
+SJENG_THREAD_LOCAL int white_hand_eval;
+SJENG_THREAD_LOCAL int black_hand_eval;
 
-uint32_t hold_hash;
+SJENG_THREAD_LOCAL uint32_t hold_hash;
 
 #define HHash(x,y)  (hold_hash ^= zobrist[(x)][(y)])
 

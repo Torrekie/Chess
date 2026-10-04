@@ -42,7 +42,7 @@ void setup_epd_line(char* inbuff)
   /* 6 : EPD data */
   int stage = 0;
 
-  static int rankoffsets[] = {110, 98, 86, 74, 62, 50, 38, 26};
+  static SJENG_THREAD_LOCAL int rankoffsets[] = {110, 98, 86, 74, 62, 50, 38, 26};
  
   /* conversion from algebraic to sjeng internal for ep squares */
   int converterf = (int) 'a';
@@ -185,6 +185,25 @@ void setup_epd_line(char* inbuff)
 
   reset_piece_square();
   initialize_hash();
+
+#ifdef MBC_IOS_IN_PROCESS_SJENG
+  /* The embedded session may begin at a saved/custom position. A fresh
+   * search must inherit its reversible-move clock, rather than reset it. */
+  {
+    const char *field = inbuff;
+    int skipped;
+    for (skipped = 0; skipped < 4; ++skipped) {
+      while (*field && isspace((unsigned char)*field)) ++field;
+      while (*field && !isspace((unsigned char)*field)) ++field;
+    }
+    fifty = (int)strtol(field, NULL, 10);
+    if (fifty < 0) fifty = 0;
+    root_to_move = ToMove;
+    move_number = 0;
+    memset(hash_history, 0, sizeof(hash_history));
+    hash_history[0] = hash;
+  }
+#endif
 
 }
 

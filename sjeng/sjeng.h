@@ -24,6 +24,13 @@
 #ifndef SJENG_H
 #define SJENG_H
 
+/* Each embedded engine owns a pthread. Desktop engines retain process storage. */
+#ifdef MBC_IOS_IN_PROCESS_SJENG
+#define SJENG_THREAD_LOCAL _Thread_local
+#else
+#define SJENG_THREAD_LOCAL
+#endif
+
 #include "config.h"
 #include <ctype.h>
 #include <signal.h>

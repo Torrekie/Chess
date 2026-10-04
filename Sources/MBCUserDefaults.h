@@ -44,6 +44,7 @@
 */
 
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
 
 extern NSString * const kMBCBoardStyle;
 extern NSString * const kMBCPieceStyle;
@@ -68,6 +69,9 @@ extern NSString * const kMBCCastleSides;
 extern NSString * const kMBCGCVictories;
 extern NSString * const kMBCShowGameLog;
 extern NSString * const kMBCShowEdgeNotation;
+#if TARGET_OS_IOS
+extern NSString * const kMBCAutoRotateBoard;
+#endif
 
 extern NSString * const kMBCShareplayEnabledFF;
 extern NSString * const kMBCUseMetalRendererFF;
