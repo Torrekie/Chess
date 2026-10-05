@@ -91,6 +91,7 @@ static NSError *MBCIOSOpenGLError(NSInteger code, NSString *description)
 - (BOOL)isRenderingActive { return _renderingActive; }
 - (NSInteger)sampleCount { return _sampleCount; }
 - (BOOL)lastFramePresented { return _lastFramePresented; }
+- (BOOL)isOrientationTransitioning { return NO; }
 
 - (void)performWithGLContext:(void (^)(void))block
 {
@@ -199,16 +200,18 @@ static NSError *MBCIOSOpenGLError(NSInteger code, NSString *description)
     }
     CGSize size = self.bounds.size;
     CGFloat scale = self.contentScaleFactor;
-    if (size.width <= 0 || size.height <= 0 || scale <= 0 ||
-        !std::isfinite(size.width) || !std::isfinite(size.height) || !std::isfinite(scale)) {
+    /* Keep the last presented drawable intact while UIKit animates its bounds. */
+    BOOL preserveDrawable = self.drawablePrepared && self.isOrientationTransitioning;
+    if (!preserveDrawable && (size.width <= 0 || size.height <= 0 || scale <= 0 ||
+        !std::isfinite(size.width) || !std::isfinite(size.height) || !std::isfinite(scale))) {
         if (error) *error = MBCIOSOpenGLError(4, NSLocalizedString(@"The board has no drawable area.", nil));
         return NO;
     }
     __block BOOL prepared = NO;
     __block NSError *failure = nil;
     [self performWithGLContext:^{
-        if (self->_drawableFramebuffer && CGSizeEqualToSize(size, self->_allocatedBoundsSize) &&
-            scale == self->_allocatedScale) {
+        if (self->_drawableFramebuffer && (preserveDrawable ||
+            (CGSizeEqualToSize(size, self->_allocatedBoundsSize) && scale == self->_allocatedScale))) {
             glBindFramebuffer(GL_FRAMEBUFFER, self->_multisampleFramebuffer ?: self->_drawableFramebuffer);
             prepared = YES;
             return;

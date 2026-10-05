@@ -25,7 +25,16 @@
 @property (nonatomic, strong) NSMutableDictionary *gameMetadata;
 @property (nonatomic) BOOL rendererChanging;
 @property (nonatomic) BOOL rendererChangePending;
+@property (nonatomic, strong) UIView *orientationTransitionCover;
+@property (nonatomic, strong) UIView *orientationTransitionSnapshot;
+@property (nonatomic) NSUInteger orientationTransitionGeneration;
+@property (nonatomic) BOOL orientationTransitionCompleting;
+- (void)beginBoardOrientationTransition;
+- (void)finishBoardOrientationTransition:(NSUInteger)generation;
+- (void)removeBoardOrientationTransitionCover:(NSUInteger)generation animated:(BOOL)animated;
 - (BOOL)rendererSceneIsForeground;
+- (BOOL)canReceiveLocalInput;
+- (void)updateLoadedGameState;
 - (void)enqueueMove:(MBCMove *)move;
 - (void)applyPendingRendererChange;
 - (void)handleApplicationDidBecomeActive:(NSNotification *)notification;
@@ -62,6 +71,8 @@
 /* Delayed frame completions isolate switching races from GPU availability. */
 @interface MBCRendererStateTestView : MBCBoardMTLView
 @property (nonatomic, copy) NSDictionary *presentationState;
+@property (nonatomic) NSUInteger snapshotCount;
+@property (nonatomic) BOOL snapshotUnavailable;
 @end
 @implementation MBCRendererStateTestView
 - (void)setStyleForBoard:(NSString *)board pieces:(NSString *)pieces { (void)board; (void)pieces; }
@@ -69,6 +80,12 @@
 - (void)needsUpdate {}
 - (NSDictionary *)iosCapturePresentationState { return self.presentationState ?: @{}; }
 - (void)iosRestorePresentationState:(NSDictionary *)state { self.presentationState = state; }
+- (UIView *)snapshotViewAfterScreenUpdates:(BOOL)afterUpdates
+{
+    (void)afterUpdates;
+    ++self.snapshotCount;
+    return self.snapshotUnavailable ? nil : [[UIView alloc] initWithFrame:self.bounds];
+}
 @end
 
 @interface MBCDelayedFrameBackend : MBCIOSBoardBackend
@@ -77,6 +94,7 @@
 @property (nonatomic, copy) void (^frameCompletion)(NSError *);
 @property (nonatomic) NSUInteger retirementCount;
 - (void)completeFrame;
+- (void)completeFrameWithError:(NSError *)error;
 @end
 @implementation MBCDelayedFrameBackend
 - (MBCIOSRendererKind)kind { return self.testKind; }
@@ -91,20 +109,28 @@
 }
 - (void)completeFrame
 {
+    [self completeFrameWithError:nil];
+}
+- (void)completeFrameWithError:(NSError *)error
+{
     void (^completion)(NSError *) = self.frameCompletion;
     self.frameCompletion = nil;
-    if (completion) completion(nil);
+    if (completion) completion(error);
 }
 @end
 
 @interface MBCRendererStateTestController : MBCRendererTestController
 @property (nonatomic) NSUInteger preparationCount;
+@property (nonatomic) BOOL refreshesInputState;
 @end
 @implementation MBCRendererStateTestController
 - (void)loadView { self.view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 512, 384)]; }
 - (void)viewDidLoad {}
 - (BOOL)rendererSceneIsForeground { return self.eligibleForRendering; }
-- (void)updateLoadedGameState {}
+- (void)updateLoadedGameState
+{
+    if (self.refreshesInputState) [self.boardView wantMouse:[self canReceiveLocalInput]];
+}
 - (void)autosaveCurrentGame {}
 - (MBCIOSBoardBackend *)prepareRenderer:(MBCIOSRendererKind)kind error:(NSError **)error
 {
@@ -166,6 +192,135 @@ static void MBCSwitchTestOnMain(void (^block)(void))
     [controller.view addSubview:initial.view];
     controller.preparationCount = 0;
     return controller;
+}
+
+- (void)testOrientationSnapshotKeepsFixedSizeAcrossRepeatedTransitions
+{
+    MBCSwitchTestOnMain(^{
+        MBCBoard *board = [[MBCBoard alloc] init];
+        [board startGame:kVarNormal];
+        MBCRendererStateTestController *controller = [self stateControllerWithBoard:board];
+        controller.refreshesInputState = YES;
+        [controller setValue:@(kNeitherSide) forKey:@"engineSide"];
+        MBCDelayedFrameBackend *backend = (id)controller.boardBackend;
+        backend.testKind = MBCIOSRendererOpenGL;
+        MBCRendererStateTestView *view = backend.testView;
+        [controller updateLoadedGameState];
+        XCTAssertTrue(view.wantsMouse);
+        CGSize capturedSize = view.bounds.size;
+        UIView *chrome = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 120, 40)];
+        [controller.view addSubview:chrome];
+        [controller beginBoardOrientationTransition];
+        // A game-state update during rotation must not leave input disabled afterward.
+        [controller updateLoadedGameState];
+        XCTAssertFalse(view.wantsMouse);
+        NSUInteger firstGeneration = controller.orientationTransitionGeneration;
+        UIView *cover = controller.orientationTransitionCover;
+        UIView *snapshot = controller.orientationTransitionSnapshot;
+        XCTAssertNotNil(cover);
+        XCTAssertNotNil(snapshot);
+        XCTAssertEqual(cover.superview, controller.view);
+        XCTAssertEqual(snapshot.superview, cover);
+        XCTAssertTrue(cover.userInteractionEnabled);
+        XCTAssertTrue(cover.accessibilityElementsHidden);
+        XCTAssertTrue(view.accessibilityElementsHidden);
+        XCTAssertFalse(snapshot.userInteractionEnabled);
+        NSArray<UIView *> *subviews = controller.view.subviews;
+        XCTAssertGreaterThan([subviews indexOfObject:cover], [subviews indexOfObject:view]);
+        XCTAssertLessThan([subviews indexOfObject:cover], [subviews indexOfObject:chrome]);
+
+        /* The real board changes size underneath an unscaled old frame. */
+        for (NSValue *value in @[[NSValue valueWithCGSize:CGSizeMake(448, 448)],
+                                 [NSValue valueWithCGSize:CGSizeMake(384, 512)]]) {
+            CGSize size = value.CGSizeValue;
+            controller.view.bounds = CGRectMake(0, 0, size.width, size.height);
+            view.bounds = controller.view.bounds;
+            [controller.view layoutIfNeeded];
+            XCTAssertEqualWithAccuracy(cover.bounds.size.width, size.width, .01);
+            XCTAssertEqualWithAccuracy(cover.bounds.size.height, size.height, .01);
+            XCTAssertEqualWithAccuracy(snapshot.bounds.size.width, capturedSize.width, .01);
+            XCTAssertEqualWithAccuracy(snapshot.bounds.size.height, capturedSize.height, .01);
+            XCTAssertEqualWithAccuracy(snapshot.center.x, CGRectGetMidX(cover.bounds), .01);
+            XCTAssertEqualWithAccuracy(snapshot.center.y, CGRectGetMidY(cover.bounds), .01);
+        }
+        [controller beginBoardOrientationTransition];
+        NSUInteger secondGeneration = controller.orientationTransitionGeneration;
+        XCTAssertGreaterThan(secondGeneration, firstGeneration);
+        XCTAssertEqual(controller.orientationTransitionSnapshot, snapshot);
+        XCTAssertEqual(view.snapshotCount, 1u);
+        [controller finishBoardOrientationTransition:firstGeneration];
+        XCTAssertNil(backend.frameCompletion);
+        XCTAssertTrue(view.isOrientationTransitioning);
+        [controller removeBoardOrientationTransitionCover:firstGeneration animated:NO];
+        XCTAssertEqual(controller.orientationTransitionCover, cover);
+
+        [controller finishBoardOrientationTransition:secondGeneration];
+        XCTAssertNotNil(backend.frameCompletion);
+        XCTAssertEqual(controller.orientationTransitionCover, cover);
+        [controller beginBoardOrientationTransition];
+        NSUInteger thirdGeneration = controller.orientationTransitionGeneration;
+        [backend completeFrame];
+        XCTAssertEqual(controller.orientationTransitionCover, cover);
+        XCTAssertTrue(view.isOrientationTransitioning);
+        [controller finishBoardOrientationTransition:thirdGeneration];
+        XCTAssertNotNil(backend.frameCompletion);
+        [backend completeFrame];
+        [controller removeBoardOrientationTransitionCover:thirdGeneration animated:NO];
+        XCTAssertNil(controller.orientationTransitionCover);
+        XCTAssertNil(controller.orientationTransitionSnapshot);
+        XCTAssertNil(cover.superview);
+        XCTAssertFalse(view.accessibilityElementsHidden);
+        XCTAssertFalse(controller.orientationTransitionCompleting);
+        XCTAssertFalse(view.isOrientationTransitioning);
+        XCTAssertTrue(view.wantsMouse);
+
+        [controller beginBoardOrientationTransition];
+        XCTAssertEqual(view.snapshotCount, 2u);
+        XCTAssertNotEqual(controller.orientationTransitionSnapshot, snapshot);
+        [controller finishBoardOrientationTransition:controller.orientationTransitionGeneration];
+        [backend completeFrame];
+        [controller removeBoardOrientationTransitionCover:controller.orientationTransitionGeneration animated:NO];
+    });
+}
+
+- (void)testInactiveOrientationDefersFrameAndCleansUpUnavailableSnapshotOnFailure
+{
+    MBCSwitchTestOnMain(^{
+        MBCBoard *board = [[MBCBoard alloc] init];
+        [board startGame:kVarNormal];
+        MBCRendererStateTestController *controller = [self stateControllerWithBoard:board];
+        MBCDelayedFrameBackend *backend = (id)controller.boardBackend;
+        MBCRendererStateTestView *view = backend.testView;
+        view.snapshotUnavailable = YES;
+        view.accessibilityElementsHidden = YES;
+        [controller beginBoardOrientationTransition];
+        NSUInteger generation = controller.orientationTransitionGeneration;
+        UIView *cover = controller.orientationTransitionCover;
+        XCTAssertNotNil(cover);
+        XCTAssertNil(controller.orientationTransitionSnapshot);
+        XCTAssertTrue(cover.opaque);
+        controller.eligibleForRendering = NO;
+        [controller finishBoardOrientationTransition:generation];
+        XCTAssertNil(backend.frameCompletion);
+        XCTAssertTrue(controller.orientationTransitionCompleting);
+        XCTAssertEqual(controller.orientationTransitionCover, cover);
+
+        /* Activation retries this same generation after its foreground check. */
+        controller.eligibleForRendering = YES;
+        [controller finishBoardOrientationTransition:generation];
+        XCTAssertNotNil(backend.frameCompletion);
+        XCTAssertEqual(controller.orientationTransitionCover, cover);
+        NSError *failure = [NSError errorWithDomain:@"ChessRenderer" code:5
+            userInfo:@{NSLocalizedDescriptionKey: @"Drawing surface unavailable"}];
+        [backend completeFrameWithError:failure];
+        XCTAssertEqual(controller.rendererError, failure);
+        XCTAssertNil(controller.orientationTransitionCover);
+        XCTAssertNil(controller.orientationTransitionSnapshot);
+        XCTAssertNil(cover.superview);
+        XCTAssertFalse(controller.orientationTransitionCompleting);
+        XCTAssertFalse(view.isOrientationTransitioning);
+        XCTAssertTrue(view.accessibilityElementsHidden);
+    });
 }
 
 - (void)testSupersededPreflightIsRetiredAndLatestFramePreservesPresentationCommands

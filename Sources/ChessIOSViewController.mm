@@ -1587,6 +1587,15 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 @property (nonatomic) BOOL rendererChanging;
 @property (nonatomic) BOOL recordingTransitioning;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *boardViewConstraints;
+@property (nonatomic, strong) UIView *orientationTransitionCover;
+@property (nonatomic, strong) UIView *orientationTransitionSnapshot;
+@property (nonatomic) NSUInteger orientationTransitionGeneration;
+@property (nonatomic) BOOL orientationTransitionCompleting;
+@property (nonatomic) BOOL orientationTransitionFramePending;
+@property (nonatomic) BOOL boardAccessibilityHiddenBeforeTransition;
+- (void)beginBoardOrientationTransition;
+- (void)finishBoardOrientationTransition:(NSUInteger)generation;
+- (void)removeBoardOrientationTransitionCover:(NSUInteger)generation animated:(BOOL)animated;
 - (void)applyPendingRendererChange;
 - (void)installBoardView:(UIView<MBCIOSBoardPresentation> *)view;
 @property (nonatomic, strong) MBCIOSBoardChromeView *actionToolbar;
@@ -1847,7 +1856,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     if (!self.rendererChangePending || self.rendererChanging || ![self rendererSceneIsForeground]) return;
     if (self.activeMoveAnimation || self.boardTurnAnimationDisplayLink ||
-        [self.boardView isOrientationTransitioning] || [self.boardView iosHasActiveInteraction] ||
+        self.orientationTransitionCover || [self.boardView isOrientationTransitioning] ||
+        [self.boardView iosHasActiveInteraction] ||
         self.recordingController.isRecording || self.recordingTransitioning) return;
     for (ChessIOSViewController *controller in MBCIOSLiveGameControllers().allObjects)
         if (controller.recordingController.isRecording || controller.recordingTransitioning) return;
@@ -1906,7 +1916,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
         [NSLayoutConstraint deactivateConstraints:stagingConstraints];
         BOOL current = controller && controller.board == board &&
             controller.rendererRevision == revision && [controller rendererSceneIsForeground] &&
-            ![controller.boardView isOrientationTransitioning];
+            !controller.orientationTransitionCover && ![controller.boardView isOrientationTransitioning];
         if (!current || frameError) {
             [next.view removeFromSuperview];
             [next retireWithCompletion:nil];
@@ -3417,7 +3427,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
 - (BOOL)canReceiveLocalInput
 {
-    if (!self.board || self.rendererChanging || self.awaitingTurnHandoff ||
+    if (!self.board || self.rendererChanging || self.orientationTransitionCover || self.awaitingTurnHandoff ||
         MBCIOSStoredOutcome(self.board, self.gameMetadata) != kCmdNull) return NO;
     if (self.players == kHumanVsGameCenter) {
         return [self isCurrentGameCenterMatchActive] &&
@@ -4705,6 +4715,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
         notification.object != self.view.window.windowScene) return;
     if (![self rendererSceneIsForeground]) return;
     [self.boardBackend setRenderingActive:YES];
+    if (self.orientationTransitionCompleting)
+        [self finishBoardOrientationTransition:self.orientationTransitionGeneration];
     MBCIOSRendererPreferences *preferences = MBCIOSRendererPreferences.sharedPreferences;
     if (preferences.desiredRenderer != self.boardBackend.kind || preferences.revision > self.rendererRevision)
         [self requestRenderer:preferences.desiredRenderer revision:preferences.revision prepared:nil];
@@ -4754,6 +4766,8 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     self.hasAppearedOnScreen = YES;
     if ([self rendererSceneIsForeground]) {
         [self.boardBackend setRenderingActive:YES];
+        if (self.orientationTransitionCompleting)
+            [self finishBoardOrientationTransition:self.orientationTransitionGeneration];
         MBCIOSRendererPreferences *preferences = MBCIOSRendererPreferences.sharedPreferences;
         if (preferences.desiredRenderer != self.boardBackend.kind || preferences.revision > self.rendererRevision)
             [self requestRenderer:preferences.desiredRenderer revision:preferences.revision prepared:nil];
@@ -5670,22 +5684,129 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 - (void)viewWillTransitionToSize:(CGSize)size
        withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
 {
-    (void)size;
+    [self beginBoardOrientationTransition];
+    NSUInteger generation = self.orientationTransitionGeneration;
     [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
     if (!self.boardView) return;
-    [self.boardView beginOrientationTransition];
+    __weak ChessIOSViewController *weakSelf = self;
     void (^finishTransition)(id<UIViewControllerTransitionCoordinatorContext>) =
     ^(id<UIViewControllerTransitionCoordinatorContext> context) {
         (void)context;
-        [self.boardView endOrientationTransition];
-        [self.boardBackend prepareWithError:nil];
-        [self.boardView drawNow];
-        [self applyPendingRendererChange];
+        [weakSelf finishBoardOrientationTransition:generation];
     };
     if (coordinator) {
-        [coordinator animateAlongsideTransition:nil completion:finishTransition];
+        [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            (void)context;
+            [weakSelf.viewIfLoaded layoutIfNeeded];
+        } completion:finishTransition];
     } else {
         finishTransition(nil);
+    }
+}
+
+- (void)beginBoardOrientationTransition
+{
+    if (!self.boardView) return;
+    ++self.orientationTransitionGeneration;
+    self.orientationTransitionCompleting = NO;
+    self.orientationTransitionFramePending = NO;
+    if (!self.orientationTransitionCover) {
+        UIView *snapshot = [self.boardView snapshotViewAfterScreenUpdates:NO];
+        UIView *cover = [[UIView alloc] initWithFrame:self.view.bounds];
+        cover.translatesAutoresizingMaskIntoConstraints = NO;
+        cover.backgroundColor = self.view.backgroundColor ?: UIColor.blackColor;
+        cover.opaque = YES;
+        cover.clipsToBounds = YES;
+        cover.userInteractionEnabled = YES;
+        cover.accessibilityElementsHidden = YES;
+        // Keep the GPU surface attached beneath the cover for the final frame.
+        UIView *coveredView = self.stagedBoardBackend.view.superview == self.view
+            ? self.stagedBoardBackend.view : self.boardView;
+        [self.view insertSubview:cover aboveSubview:coveredView];
+        [NSLayoutConstraint activateConstraints:@[
+            [cover.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [cover.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [cover.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [cover.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+        if (snapshot) {
+            snapshot.translatesAutoresizingMaskIntoConstraints = NO;
+            snapshot.userInteractionEnabled = NO;
+            [cover addSubview:snapshot];
+            // Only the center moves; the captured scene keeps its size in points.
+            [NSLayoutConstraint activateConstraints:@[
+                [snapshot.widthAnchor constraintEqualToConstant:self.boardView.bounds.size.width],
+                [snapshot.heightAnchor constraintEqualToConstant:self.boardView.bounds.size.height],
+                [snapshot.centerXAnchor constraintEqualToAnchor:cover.centerXAnchor],
+                [snapshot.centerYAnchor constraintEqualToAnchor:cover.centerYAnchor]
+            ]];
+        }
+        self.orientationTransitionSnapshot = snapshot;
+        self.orientationTransitionCover = cover;
+        self.boardAccessibilityHiddenBeforeTransition = self.boardView.accessibilityElementsHidden;
+        self.boardView.accessibilityElementsHidden = YES;
+        [self.view layoutIfNeeded];
+    } else {
+        // A second rotation reuses the undistorted capture and cancels its fade.
+        [self.orientationTransitionCover.layer removeAllAnimations];
+        self.orientationTransitionCover.alpha = 1.0;
+    }
+    [self.boardView beginOrientationTransition];
+}
+
+- (void)finishBoardOrientationTransition:(NSUInteger)generation
+{
+    if (generation != self.orientationTransitionGeneration || !self.orientationTransitionCover) return;
+    [self.boardView endOrientationTransition];
+    self.orientationTransitionCompleting = YES;
+    // An interrupted transition waits for foreground resume before touching GPU resources.
+    if (![self rendererSceneIsForeground] || self.orientationTransitionFramePending) return;
+    [self.view layoutIfNeeded];
+    NSError *error = nil;
+    MBCIOSBoardBackend *backend = self.boardBackend;
+    if (![backend prepareWithError:&error]) {
+        [self removeBoardOrientationTransitionCover:generation animated:NO];
+        if (error) [self showDocumentError:error];
+        return;
+    }
+    self.orientationTransitionFramePending = YES;
+    __weak ChessIOSViewController *weakSelf = self;
+    [backend renderFirstFrameWithCompletion:^(NSError *frameError) {
+        ChessIOSViewController *controller = weakSelf;
+        if (!controller || generation != controller.orientationTransitionGeneration ||
+            controller.boardBackend != backend) return;
+        controller.orientationTransitionFramePending = NO;
+        if (![controller rendererSceneIsForeground]) return;
+        [controller removeBoardOrientationTransitionCover:generation animated:frameError == nil];
+        if (frameError) [controller showDocumentError:frameError];
+    }];
+}
+
+- (void)removeBoardOrientationTransitionCover:(NSUInteger)generation animated:(BOOL)animated
+{
+    UIView *cover = self.orientationTransitionCover;
+    if (!cover || generation != self.orientationTransitionGeneration) return;
+    __weak ChessIOSViewController *weakSelf = self;
+    void (^removeCover)(void) = ^{
+        ChessIOSViewController *controller = weakSelf;
+        if (!controller || generation != controller.orientationTransitionGeneration ||
+            controller.orientationTransitionCover != cover) return;
+        [cover removeFromSuperview];
+        controller.orientationTransitionCover = nil;
+        controller.orientationTransitionSnapshot = nil;
+        controller.orientationTransitionCompleting = NO;
+        controller.orientationTransitionFramePending = NO;
+        controller.boardView.accessibilityElementsHidden = controller.boardAccessibilityHiddenBeforeTransition;
+        [controller updateLoadedGameState];
+        [controller applyPendingRendererChange];
+    };
+    if (animated) {
+        [UIView animateWithDuration:0.12 delay:0 options:UIViewAnimationOptionBeginFromCurrentState
+            animations:^{ cover.alpha = 0.0; }
+            completion:^(BOOL finished) { (void)finished; removeCover(); }];
+    } else {
+        [cover.layer removeAllAnimations];
+        removeCover();
     }
 }
 

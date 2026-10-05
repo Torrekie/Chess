@@ -26,6 +26,9 @@ NS_ASSUME_NONNULL_BEGIN
  * Both execute with the view's native and desktop-GL contexts active. */
 - (void)drawBoardFrame;
 - (void)releaseGLResources;
+
+/* Subclasses can preserve their current drawable during a size transition. */
+- (BOOL)isOrientationTransitioning;
 @end
 
 NS_ASSUME_NONNULL_END
