@@ -104,7 +104,7 @@ static NSString *MBCIOSPocketName(MBCPiece piece)
         element.canActivate = humanTurn;
         element.accessibilityLabel = [self describeSquare:square];
         element.accessibilityHint = legalDropTargets & (1ULL << square)
-            ? MBCIOSLocalizedString(@"ios_legal_drop_destination", @"Legal drop destination")
+            ? MBCIOSLocalizedString(@"ios_legal_destination", @"Legal destination")
             : nil;
         element.accessibilityIdentifier = [NSString stringWithFormat:@"square-%c%u",
                                            Col(square), Row(square)];

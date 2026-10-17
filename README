@@ -45,6 +45,11 @@ An output directory can be supplied as the script's first argument;
 DEVELOPER_DIR can select an installed Xcode, and CHESS_DERIVED_DATA can
 reuse an existing build cache.
 
+On Linux, run make with a theos tree (THEOS, default ~/theos) holding the
+Swift 5.8 iOS toolchain and an iPhoneOS 14 SDK; make publish copies the
+IPA to /srv/http/files/chess with a TrollStore install page. Without
+Xcode, the Metal shaders ship as source and compile on the device.
+
 Licensing
 
 The original project consists of the Chess engine, "sjeng", and the

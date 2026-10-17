@@ -83,6 +83,9 @@ static void *MBCIOSjengThreadMain(void *opaque)
 @property (nonatomic) BOOL observingMoves;
 @property (nonatomic) BOOL waitingForMovePresentation;
 @property (nonatomic) BOOL awaitingStartupAcknowledgement;
+/* Sjeng is in xboard force mode.  Out of it, Sjeng answers each opponent
+ * move by itself, and a further `go` would make it play the opponent. */
+@property (nonatomic) BOOL forceMode;
 @property (nonatomic) MBCIOSjengSession *session;
 @property (nonatomic) NSUInteger generation;
 @end
@@ -370,6 +373,7 @@ static void *MBCIOSjengThreadMain(void *opaque)
     BOOL engineMovesNow = engineSide == kBothSides || engineSide == self.nextSide;
     if (engineMovesNow) [self writeString:@"go\n"];
     else [self writeString:@"force\n"];
+    self.forceMode = !engineMovesNow;
 }
 
 - (void)setSearchTime:(NSInteger)searchTime
@@ -424,7 +428,10 @@ static void *MBCIOSjengThreadMain(void *opaque)
         self.pendingHumanSide = kNeitherSide;
         [self postMove:move side:side];
         self.nextSide = side == kWhiteSide ? kBlackSide : kWhiteSide;
-        if (self.engineSide == self.nextSide) [self writeString:@"go\n"];
+        if (self.engineSide == self.nextSide && self.forceMode) {
+            [self writeString:@"go\n"];
+            self.forceMode = NO;
+        }
         return;
     }
     if ([line hasPrefix:@"Illegal move:"]) {
@@ -461,6 +468,14 @@ static void *MBCIOSjengThreadMain(void *opaque)
             self.waitingForMovePresentation = YES;
         }
     }
+}
+
+- (BOOL)isSynchronizedWithBoard:(MBCBoard *)board
+{
+    if (!self.isRunning || !board) return NO;
+    if (self.pendingHumanMove || self.awaitingStartupAcknowledgement) return YES;
+    MBCSide boardSide = ([board numMoves] & 1) ? kBlackSide : kWhiteSide;
+    return self.nextSide == boardSide;
 }
 
 - (void)sendNextComputerMove

@@ -47,6 +47,11 @@ FOUNDATION_EXPORT NSNotificationName const MBCIOSChessEngineDidStopNotification;
  */
 - (void)movePresentationDidFinish;
 
+/* Whether the xboard session agrees with the board: no local move awaits
+ * Sjeng's confirmation and Sjeng expects the side that the board has to
+ * move.  A session that disagrees cannot produce the next computer move. */
+- (BOOL)isSynchronizedWithBoard:(MBCBoard *)board;
+
 - (void)stop;
 
 @end

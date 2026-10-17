@@ -273,11 +273,13 @@ inline bool IsPieceRenderable(MBCPiece piece) {
 - (void)placePieceSelection {
     BOOL updateRenderer = NO;
     if (_pickedSquare != kInvalidSquare) {
-        if (!_pieceSelectionInstance.visible) {
+        MBCPosition pickedPos = [self squareToPosition:_pickedSquare];
+        vector_float3 position = { pickedPos[0], MBC_POSITION_Y_PIECE_SELECTION, pickedPos[2] };
+        // A touch can pick another piece without a frame in between.
+        if (!_pieceSelectionInstance.visible ||
+            !simd_equal(_pieceSelectionInstance.position, position)) {
             // Place and turn on piece selection
-            MBCPosition pickedPos = [self squareToPosition:_pickedSquare];
-            vector_float3 position = { pickedPos[0], MBC_POSITION_Y_PIECE_SELECTION, pickedPos[2] };
-            
+
             BOOL isBlackSquare = NO;
             if (_pickedSquare < kBoardSquares) {
                 const unsigned zeroIndexRow = Row(_pickedSquare) - 1;

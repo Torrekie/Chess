@@ -41,6 +41,7 @@ static void MBCMultiplyCameraDistance(MBCBoardView *view, float factor)
 #define _legalDropOrigin fLegalDropOrigin
 #define _legalDropMoveCount fLegalDropMoveCount
 #define _legalDropTargetsMask fLegalDropTargetsMask
+#define _touchBeganOnPickedSquare fTouchBeganOnPickedSquare
 #include "MBCBoardViewIOSTouch.inc"
 #undef _board
 #undef _variant
@@ -66,5 +67,6 @@ static void MBCMultiplyCameraDistance(MBCBoardView *view, float factor)
 #undef _legalDropOrigin
 #undef _legalDropMoveCount
 #undef _legalDropTargetsMask
+#undef _touchBeganOnPickedSquare
 #undef MBCIOSBoardTouchClass
 #endif

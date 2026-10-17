@@ -336,6 +336,40 @@ const float kReflectionBlurSigma = 3.f;
     return sDefaultDevice;
 }
 
+/*!
+ @abstract shaderLibraryForDevice:
+ @param device The device the renderer draws with
+ @discussion Returns the default library when the bundle has a compiled one. The Linux build
+ cannot run the Metal compiler, so it ships the shaders as one MBCShaders.metal source that is
+ compiled here once and shared by every renderer.
+ */
++ (id<MTLLibrary>)shaderLibraryForDevice:(id<MTLDevice>)device {
+    static id<MTLLibrary> sLibrary;
+    static id<MTLDevice> sLibraryDevice;
+    @synchronized (self) {
+        if (sLibrary && sLibraryDevice == device) {
+            return sLibrary;
+        }
+        id<MTLLibrary> library = [device newDefaultLibrary];
+        if (!library) {
+            NSURL *url = [[NSBundle mainBundle] URLForResource:@"MBCShaders" withExtension:@"metal"];
+            NSString *source = url ? [NSString stringWithContentsOfURL:url
+                                                              encoding:NSUTF8StringEncoding
+                                                                 error:nil] : nil;
+            NSError *error = nil;
+            if (source) {
+                library = [device newLibraryWithSource:source options:[MTLCompileOptions new] error:&error];
+            }
+            if (!library) {
+                NSLog(@"Chess Metal shader library unavailable: %@", error);
+            }
+        }
+        sLibrary = library;
+        sLibraryDevice = device;
+        return library;
+    }
+}
+
 - (instancetype)initWithDevice:(id<MTLDevice>)device mtkView:(MBCBoardMTLView *)mtkView {
     self = [super init];
     if (self) {
@@ -371,7 +405,7 @@ const float kReflectionBlurSigma = 3.f;
 
 - (void)initializeMetal {
     _commandQueue = [_device newCommandQueue];
-    _library = [_device newDefaultLibrary];
+    _library = [MBCMetalRenderer shaderLibraryForDevice:_device];
     
     _mtkView.colorPixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     
@@ -480,7 +514,8 @@ const float kReflectionBlurSigma = 3.f;
         _reflectionPipelineState = [self defaultPBRPipelineStateWithDevice:_device
                                                                    library:_library
                                                                    mtkView:_mtkView 
-                                                                   options:options];
+                                                                   options:options
+                                                          colorPixelFormat:[self reflectionPixelFormat]];
         _reflectionRenderPassDescriptor = [[MTLRenderPassDescriptor alloc] init];
     }
     
@@ -550,6 +585,19 @@ const float kReflectionBlurSigma = 3.f;
                                                         library:(id<MTLLibrary>)library
                                                         mtkView:(MTKView *)mtkView
                                                         options:(MBCPBRShaderOption)options {
+    return [self defaultPBRPipelineStateWithDevice:device library:library mtkView:mtkView
+                                           options:options colorPixelFormat:mtkView.colorPixelFormat];
+}
+
+/*!
+ @abstract Same as defaultPBRPipelineStateWithDevice:library:mtkView:options:, for a color
+ attachment whose format differs from the view's, such as the iOS reflection map.
+ */
+- (id<MTLRenderPipelineState>)defaultPBRPipelineStateWithDevice:(id<MTLDevice>)device
+                                                        library:(id<MTLLibrary>)library
+                                                        mtkView:(MTKView *)mtkView
+                                                        options:(MBCPBRShaderOption)options
+                                               colorPixelFormat:(MTLPixelFormat)colorPixelFormat {
     NSError *error = nil;
     BOOL usePBRMaps = (options & MBCPBRShaderOptionSamplePBRMaps) != 0;
     BOOL sampleReflection = (options & MBCPBRShaderOptionSampleReflection) != 0;
@@ -575,7 +623,7 @@ const float kReflectionBlurSigma = 3.f;
     renderPipelineDescriptor.fragmentFunction = fragmentFunction;
     renderPipelineDescriptor.depthAttachmentPixelFormat = mtkView.depthStencilPixelFormat;
     renderPipelineDescriptor.rasterSampleCount = useMSAA ? _rasterSampleCount : 1;
-    renderPipelineDescriptor.colorAttachments[0].pixelFormat = mtkView.colorPixelFormat;
+    renderPipelineDescriptor.colorAttachments[0].pixelFormat = colorPixelFormat;
     
     if (alphaBlend) {
         renderPipelineDescriptor.colorAttachments[0].blendingEnabled = YES;
@@ -714,6 +762,18 @@ static NSString *MBCMetalSupportedStyle(NSString *style) {
 }
 
 /*!
+ @abstract MPS cannot write an sRGB texture on iOS. Keep the forward drawable in sRGB, but use a
+ linear BGRA target for the reflection pass and its blur destination.
+ */
+- (MTLPixelFormat)reflectionPixelFormat {
+#if TARGET_OS_IOS
+    return MTLPixelFormatBGRA8Unorm;
+#else
+    return _mtkView.colorPixelFormat;
+#endif
+}
+
+/*!
  @abstract updateReflectionTexturesForSize:
  @param size The new size of drawable that will determine size of reflection textures.
  @discussion Create textures for rendering the reflection map. Using half width and height
@@ -721,13 +781,7 @@ static NSString *MBCMetalSupportedStyle(NSString *style) {
  */
 - (void)updateReflectionTexturesForSize:(CGSize)size {
     // Reflection color map textures
-    // MPS cannot write an sRGB texture on iOS. Keep the forward drawable in
-    // sRGB, but use a linear BGRA target for the blur destination.
-#if TARGET_OS_IOS
-    const MTLPixelFormat reflectionPixelFormat = MTLPixelFormatBGRA8Unorm;
-#else
-    const MTLPixelFormat reflectionPixelFormat = _mtkView.colorPixelFormat;
-#endif
+    const MTLPixelFormat reflectionPixelFormat = [self reflectionPixelFormat];
     MTLTextureDescriptor *descriptor =
         [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:reflectionPixelFormat
                                                            width:size.width * 0.5f
