@@ -191,7 +191,9 @@ const float kBorderLabelCenterZ = kBorderLabelCenterX;
     CGFloat _previousGestureSpan;
     BOOL _inTwoFingerManipulation;
     BOOL _awaitingPromotionChoice;
-    /*! Cached legal drop destinations for the selected Crazyhouse pocket. */
+    /*! The current touch started on the already picked piece, so a tap releases it. */
+    BOOL _touchBeganOnPickedSquare;
+    /*! Cached legal destinations for the selected piece or Crazyhouse pocket. */
     uint64_t _legalDropTargetsMask;
     uint64_t _renderedLegalDropTargetsMask;
     MBCSquare _legalDropOrigin;

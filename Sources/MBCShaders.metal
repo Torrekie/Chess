@@ -348,7 +348,7 @@ fragment float4 fsChess(VertexOut in [[stage_in]],
                         texture2d<float> metallicMap [[texture(MBCTextureIndexMetallic), function_constant(is_using_material_maps)]],
                         texture2d<float> roughnessAOMap [[texture(MBCTextureIndexRoughnessAO), function_constant(is_using_material_maps)]],
                         depth2d<float> shadowMap [[texture(MBCTextureIndexShadow)]],
-                        depth2d<float> reflectionMap [[texture(MBCTextureIndexReflection), function_constant(is_sampling_reflection)]]) {
+                        texture2d<float> reflectionMap [[texture(MBCTextureIndexReflection), function_constant(is_sampling_reflection)]]) {
     
     SurfaceParameters surfaceParams = surfaceParameters(in,
                                                         frameData,
@@ -426,6 +426,12 @@ fragment float4 fsChess(VertexOut in [[stage_in]],
                                   fillIntensity * computeDiffuse(surfaceParams, fillLightParams), 1.f);
         color += fillColor;
     }
+
+    // The light terms add up past 1 on light materials; roll highlights off
+    // instead of clipping them to flat white.
+    const float kShoulder = 0.7f;
+    float3 over = max(color.xyz - kShoulder, 0.f);
+    color.xyz = min(color.xyz, kShoulder) + over / (1.f + over / (1.f - kShoulder));
 
     color.w = in.alpha;
     

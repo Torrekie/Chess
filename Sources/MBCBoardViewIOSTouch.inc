@@ -406,8 +406,13 @@ static void MBCPostUncheckedMove(MBCIOSBoardTouchClass *sourceView, MBCBoard *bo
         return;
     }
 
+    _touchBeganOnPickedSquare = NO;
     if (_pickedSquare != kInvalidSquare) {
-        return;
+        // Another square is a destination for touchesEnded.  One of the
+        // side's own pieces is picked up instead, so it can be dragged or
+        // replace the current choice.
+        if (!hasPiece && !hasPocket) return;
+        _touchBeganOnPickedSquare = _selectedDestination == _pickedSquare;
     }
 
     MBCPiece piece = hasPocket
@@ -529,17 +534,31 @@ static void MBCPostUncheckedMove(MBCIOSBoardTouchClass *sourceView, MBCBoard *bo
         _pickedSquare = kInvalidSquare;
         [self unselectPiece];
     } else if (_selectedPiece != EMPTY) {
-        // A tap picks the piece for a second tap; a drag supplies its target.
+        // A tap picks the piece for a second tap, and tapping it again puts
+        // it back; a drag supplies its target.
         BOOL dragged = hypot(point.x - _previousMousePosition.x,
                              point.y - _previousMousePosition.y) > 12.0;
         if (dragged && destination != _selectedSquare) {
-            move = MBCLegalMoveForSquares(_board, _variant, _selectedSquare, destination);
+            MBCPiece piece = _selectedPiece;
+            MBCSquare origin = _selectedSquare;
+            move = MBCLegalMoveForSquares(_board, _variant, origin, destination);
+            [self unselectPiece];
+            // The finger already carried the piece there; do not replay it.
+            if (move) move->fAnimate = NO;
+            if (!move) {
+                // Keep an illegally dropped piece picked, so a tap can still
+                // finish its move.
+                [self selectPiece:piece at:origin];
+                [self clickPiece];
+            }
+        } else if (_touchBeganOnPickedSquare && !dragged) {
             [self unselectPiece];
         } else {
             [self clickPiece];
         }
     }
 
+    _touchBeganOnPickedSquare = NO;
     _selectedDestination = kInvalidSquare;
     // Human-vs-Human delivery starts the animation synchronously. Finish
     // touch cleanup first so it cannot erase the animator's piece/destination.
@@ -562,6 +581,7 @@ static void MBCPostUncheckedMove(MBCIOSBoardTouchClass *sourceView, MBCBoard *bo
     _previousGestureCenter = CGPointZero;
     _previousGestureSpan = 0.0;
     _selectedDestination = kInvalidSquare;
+    _touchBeganOnPickedSquare = NO;
     [self unselectPiece];
     [self drawNow];
 }
@@ -597,33 +617,25 @@ static void MBCPostUncheckedMove(MBCIOSBoardTouchClass *sourceView, MBCBoard *bo
     [self drawNow];
 }
 
+/* Legal destinations of the picked or dragged piece, drawn as markers so
+ * the player can see where it may go.  Crazyhouse pockets use the same set
+ * for drops. */
 - (uint64_t)iosLegalDropTargets
 {
-    MBCSquare source = MBCIsPocketSquare(_pickedSquare) ? _pickedSquare :
-        (_selectedPiece != EMPTY && MBCIsPocketSquare(_selectedSquare)
-            ? _selectedSquare : kInvalidSquare);
-    if (!MBCIsPocketSquare(source) || !_board || _variant != kVarCrazyhouse ||
-        !_wantMouse || _inAnimation || !MBCHumanMayMove(self)) return 0;
-    MBCPiece piece = source - kInHandSquare;
+    MBCSquare source = _pickedSquare != kInvalidSquare ? _pickedSquare :
+        (_selectedPiece != EMPTY ? _selectedSquare : kInvalidSquare);
+    if (source == kInvalidSquare || !_board || !_wantMouse || _inAnimation ||
+        !MBCHumanMayMove(self)) return 0;
+    if (MBCIsPocketSquare(source) ? _variant != kVarCrazyhouse : source >= kBoardSquares)
+        return 0;
     int moveCount = [_board numMoves];
-    BOOL white = (moveCount & 1) == 0;
-    if (Color(piece) != (white ? kWhitePiece : kBlackPiece) ||
-        [_board curInHand:piece] < 1) return 0;
     if (_legalDropTargetsValid && _legalDropOrigin == source &&
         _legalDropMoveCount == moveCount) return _legalDropTargetsMask;
 
-    MBCMoveCollector *collector = [[MBCMoveCollector alloc] init];
-    MBCMoveGenerator generator(collector, _variant, 0);
-    generator.Generate(white, *[_board curPos]);
-    MBCMoveCollection *collection = [collector collection];
-    uint64_t candidates = Piece(piece) == PAWN ? collection->fPawnDrops
-        : (collection->fDroppablePieces & (1 << Piece(piece)))
-            ? collection->fPieceDrops : 0;
     uint64_t legal = 0;
     for (MBCSquare square = 0; square < kBoardSquares; ++square) {
-        if ((candidates & (1ULL << square)) &&
-            MBCMoveKeepsKingSafe(_board, _variant, piece, source, square,
-                                 NO, YES)) legal |= (1ULL << square);
+        if (MBCLegalMoveForSquares(_board, _variant, source, square))
+            legal |= (1ULL << square);
     }
     _legalDropOrigin = source;
     _legalDropMoveCount = moveCount;

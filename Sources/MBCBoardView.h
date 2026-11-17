@@ -139,6 +139,7 @@ extern MBCPieceCode gInHandOrder[];
     MBCSquare             fLegalDropOrigin;
     int                   fLegalDropMoveCount;
     BOOL                  fLegalDropTargetsValid;
+    BOOL                  fTouchBeganOnPickedSquare;
     NSMutableDictionary * fIOSAccessibilitySquareElements;
     NSMutableArray *      fIOSVisibleAccessibilityElements;
     float                 fCameraZoomScale;

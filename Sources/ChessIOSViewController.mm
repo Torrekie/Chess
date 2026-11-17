@@ -191,7 +191,7 @@ static NSHashTable<ChessIOSViewController *> *MBCIOSLiveGameControllers(void)
     return controllers;
 }
 
-static const NSTimeInterval kMBCIOSMoveAnimationDuration = 1.0;
+static const NSTimeInterval kMBCIOSMoveAnimationDuration = 0.45;
 
 static MBCMove *MBCIOSCopyMove(MBCMove *source)
 {
@@ -1666,6 +1666,10 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 @property (nonatomic) float boardTurnAnimationTargetAzimuth;
 @property (nonatomic) NSTimeInterval boardTurnAnimationStartTime;
 @property (nonatomic) BOOL awaitingTurnHandoff;
+/* An engine game result that arrived before its final move was shown. */
+@property (nonatomic, strong) MBCMove *pendingEngineResult;
+/* An engine restart requested while moves were still being presented. */
+@property (nonatomic) BOOL engineRestartDeferred;
 - (UIButton *)commandButtonWithTitle:(NSString *)title
                                 image:(NSString *)imageName
                                action:(SEL)action
@@ -1766,6 +1770,9 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 - (BOOL)isComputerMove:(MBCMove *)move;
 - (BOOL)usesAlternateVoiceForMove:(MBCMove *)move computerMove:(BOOL)computerMove;
 - (void)restartEngineFromCurrentBoard;
+- (void)runDeferredEngineRestart;
+- (void)verifyComputerTurn;
+- (void)computerTurnWatchdog:(NSArray *)expected;
 - (void)restorePlayerModeForSide:(MBCSide)side metadata:(NSDictionary *)metadata;
 - (BOOL)isCurrentGameCenterMatchActive;
 - (BOOL)isShowingGameCenterMatchID:(NSString *)matchID;
@@ -2889,6 +2896,14 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 {
     if (notification.object != self && notification.object != self.engine) return;
     MBCMove *result = (MBCMove *)notification.userInfo;
+    /* Sjeng reports the result right after its final move, while that move
+     * may still be queued.  Show the move first instead of discarding it. */
+    if (notification.object == self.engine &&
+        (self.activeMoveAnimation || self.pendingMoveAnimations.count)) {
+        self.pendingEngineResult = result;
+        return;
+    }
+    self.pendingEngineResult = nil;
     MBCMoveCode command = result ? result->fCommand : [self.board outcome];
     NSString *title = MBCIOSGameResultTitle(command);
     if (!title) return;
@@ -2957,6 +2972,22 @@ typedef void (^MBCIOSPanelActionHandler)(void);
 
     MBCMove *move = self.pendingMoveAnimations.firstObject;
     [self.pendingMoveAnimations removeObjectAtIndex:0];
+
+    /* Only the side to move may move.  A stale engine session can emit a
+     * move for the other color; applying it would hand the human's turn to
+     * the computer and leave nobody able to move. */
+    MBCPiece mover = move->fCommand == kCmdDrop ? move->fPiece
+                                                 : [self.board curContents:move->fFromSquare];
+    MBCPieceCode moverColor = ([self.board numMoves] & 1) ? kBlackPiece : kWhitePiece;
+    if (Piece(mover) == EMPTY || Color(mover) != moverColor) {
+        NSLog(@"Chess dropped a move for the side not on turn");
+        if (self.engineSide != kNeitherSide) {
+            [self.engine stop];
+            [self restartEngineFromCurrentBoard];
+        }
+        [self startNextMoveAnimation];
+        return;
+    }
     self.activeMoveAnimation = move;
 
     /* Clear touch selection before taking the old board snapshot.  This also
@@ -3066,6 +3097,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     } else {
         [self updateGameStatusTitle];
         [self.engine movePresentationDidFinish];
+        [self verifyComputerTurn];
         if (self.players == kHumanVsGameCenter && !remoteMove) {
             self.gameCenterAwaitingRemoteTurn = YES;
             [self.boardView wantMouse:NO];
@@ -3111,6 +3143,12 @@ typedef void (^MBCIOSPanelActionHandler)(void);
             [self startNextMoveAnimation];
             [self presentTurnHandoffIfNeeded];
         }
+        if (self.pendingEngineResult && !self.activeMoveAnimation &&
+            !self.pendingMoveAnimations.count) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:MBCGameEndNotification
+                object:self.engine userInfo:(id)self.pendingEngineResult];
+        }
+        [self runDeferredEngineRestart];
     } else {
         [self applyPendingRendererChange];
     }
@@ -3127,6 +3165,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     self.activeMoveIsRemote = NO;
     self.pendingRemoteMetadata = nil;
     self.pendingRemoteResponse = nil;
+    self.pendingEngineResult = nil;
     [self.pendingMoveAnimations removeAllObjects];
     [self.boardView animationDone];
     [self.boardView unselectPiece];
@@ -3203,6 +3242,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     }
     [self startNextMoveAnimation];
     [self presentTurnHandoffIfNeeded];
+    [self runDeferredEngineRestart];
 }
 
 - (BOOL)rotateAfterEachMoveForCurrentGame
@@ -3329,6 +3369,15 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     if (!self.view.window || (scene && scene.activationState != UISceneActivationStateForegroundActive))
         return;
     if (self.engine.isRunning) return;
+    /* Queued moves are not on the board yet.  A session replayed from it now
+     * would think its own side is still to move and play that side again
+     * once they land, i.e. move for the human. */
+    if (self.activeMoveAnimation || self.pendingMoveAnimations.count ||
+        self.boardTurnAnimationDisplayLink) {
+        self.engineRestartDeferred = YES;
+        return;
+    }
+    self.engineRestartDeferred = NO;
     NSLog(@"Chess engine resume in scene %@ key=%@",
           scene.session.persistentIdentifier ?: @"none",
           self.view.window.isKeyWindow ? @"YES" : @"NO");
@@ -3346,6 +3395,60 @@ typedef void (^MBCIOSPanelActionHandler)(void);
                 searchTime:searchTime
                  fromBoard:self.board];
     [self updateLoadedGameState];
+}
+
+static const NSTimeInterval kMBCIOSComputerTurnTimeout = 45.0;
+
+- (BOOL)isComputerTurn
+{
+    if (!self.board || self.engineSide == kNeitherSide ||
+        MBCIOSStoredOutcome(self.board, self.gameMetadata) != kCmdNull) return NO;
+    MBCSide toMove = ([self.board numMoves] & 1) ? kBlackSide : kWhiteSide;
+    return self.engineSide == kBothSides || self.engineSide == toMove;
+}
+
+/* A computer turn must end in an engine move.  Restart the session from the
+ * board when its protocol state no longer matches, and again if it stays
+ * silent much longer than Sjeng's time allotment for a move. */
+- (void)verifyComputerTurn
+{
+    if (![self isComputerTurn] || self.pendingMoveAnimations.count ||
+        !self.engine.isRunning) return;
+    if (![self.engine isSynchronizedWithBoard:self.board]) {
+        NSLog(@"Chess engine out of step with the board; restarting it");
+        [self.engine stop];
+        [self restartEngineFromCurrentBoard];
+    }
+    NSArray *expected = @[self.board, @([self.board numMoves])];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(computerTurnWatchdog:)
+                                               object:nil];
+    [self performSelector:@selector(computerTurnWatchdog:) withObject:expected
+               afterDelay:kMBCIOSComputerTurnTimeout +
+                   (self.engineSide == kBothSides ? 4.0 : 0.0)];
+}
+
+- (void)computerTurnWatchdog:(NSArray *)expected
+{
+    if (expected.firstObject != self.board ||
+        [expected.lastObject intValue] != [self.board numMoves] ||
+        ![self isComputerTurn] || self.activeMoveAnimation ||
+        self.pendingMoveAnimations.count || !self.engine.isRunning) return;
+    NSLog(@"Chess engine did not move; restarting it");
+    [self.engine stop];
+    [self restartEngineFromCurrentBoard];
+    [self verifyComputerTurn];
+}
+
+- (void)runDeferredEngineRestart
+{
+    if (!self.engineRestartDeferred || self.activeMoveAnimation ||
+        self.pendingMoveAnimations.count || self.boardTurnAnimationDisplayLink) return;
+    self.engineRestartDeferred = NO;
+    if (self.engineSide != kNeitherSide && !self.engine.isRunning) {
+        [self restartEngineFromCurrentBoard];
+        [self updateLoadedGameState];
+    }
 }
 
 - (void)restorePlayerModeForSide:(MBCSide)side metadata:(NSDictionary *)metadata
@@ -4263,12 +4366,15 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     (void)sender;
     if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) return;
     UISceneActivationRequestOptions *options = nil;
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 150000
     if (@available(iOS 15.0, *)) {
         UIWindowSceneActivationRequestOptions *windowOptions =
             [[UIWindowSceneActivationRequestOptions alloc] init];
         windowOptions.preferredPresentationStyle = UIWindowScenePresentationStyleProminent;
         options = windowOptions;
-    } else {
+    } else
+#endif
+    {
         options = [[UISceneActivationRequestOptions alloc] init];
     }
     options.requestingScene = self.view.window.windowScene;
@@ -5665,6 +5771,7 @@ typedef void (^MBCIOSPanelActionHandler)(void);
     [self updateLoadedGameState];
     self.lastSavedGameSnapshot = [self currentGameSnapshot];
     if (self.engineSide != kNeitherSide) [self restartEngineFromCurrentBoard];
+    [self verifyComputerTurn];
 }
 
 - (void)viewDidLayoutSubviews
